@@ -61,16 +61,25 @@ coinciden, así que no se deben mezclar ni promediar entre sí.
 
 El token de la API de Holded se guarda en Supabase Vault como el secreto
 `holded_api_key` (creado a mano, no viene en las migraciones). Para
-refrescar los datos, vuelve a llamar a `GET /api/v2/invoices` (paginado,
-`limit=200`, cabecera `Authorization: Bearer <token>`) y reagrega por
-`(year, month, currency)` a partir del campo `date` de cada factura,
-sumando `subtotal` (nunca `total`, que lleva el IVA incluido).
+refrescar los datos:
 
-Nota: estos totales pueden no cuadrar exactamente con el informe nativo
-"Ventas" de Holded — esa consulta solo trae `docType=invoice`, y el
-informe de Holded probablemente también incluye notas de crédito u otros
-tipos de documento de venta. Pendiente si se quiere una reconciliación
-exacta.
+1. `GET /api/v2/invoices` (paginado, `limit=200`, cabecera
+   `Authorization: Bearer <token>`) — suma `subtotal` (nunca `total`, que
+   lleva el IVA incluido) por `(year, month, currency)` según el campo
+   `date` de cada factura.
+2. `GET /api/v2/credit-notes` (mismo formato de paginación) — resta su
+   `subtotal` del mismo `(year, month, currency)`: una nota de crédito
+   reduce lo realmente facturado (anulaciones, correcciones).
+
+Nota conocida: aun así esto **no cuadra exactamente** con el widget nativo
+"Ventas" del dashboard de Holded (confirmado contrastando enero-marzo
+2026). La explicación más probable: ese informe convierte todas las
+monedas a EUR con el tipo de cambio interno de Holded, que la API no
+expone — no hay un campo de importe-en-EUR en la factura ni un endpoint
+de tipos de cambio (se probó `/exchange-rates`, `/currencies`,
+`/company`: ninguno existe). Por eso aquí cada moneda se mantiene por
+separado sin convertir, en vez de inventar un tipo de cambio — mismo
+criterio que con el reparto España/Panamá.
 
 ### Actualizar o ampliar los datos
 
