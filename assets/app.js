@@ -107,6 +107,10 @@ function getSeries(yearData) {
 
 // ---------------- Render ----------------
 function renderFilters(yearData) {
+  const split = yearData.hasSplit;
+  if (!split && state.region !== "total") state.region = "total";
+  if (!split && state.view === "compare") state.view = "region";
+
   document.querySelectorAll("#yearSeg button").forEach(b => {
     b.setAttribute("aria-pressed", String(Number(b.dataset.year) === state.year));
   });
@@ -117,15 +121,19 @@ function renderFilters(yearData) {
     b.setAttribute("aria-pressed", String(b.dataset.view === state.view));
   });
 
-  const split = yearData.hasSplit;
   document.querySelectorAll("#regionSeg button[data-region='espana'], #regionSeg button[data-region='panama']")
     .forEach(b => b.disabled = !split);
   document.querySelector("#viewSeg button[data-view='compare']").disabled = !split;
-  document.getElementById("regionNote").classList.toggle("show", !split);
-  if (!split && state.region !== "total") state.region = "total";
-  if (!split && state.view !== "region") state.view = "region";
 
-  document.getElementById("regionSeg").style.display = state.view === "compare" ? "none" : "flex";
+  const yearIrrelevant = state.view === "yoy";
+  const regionIrrelevant = state.view === "compare" || state.view === "yoy";
+  document.getElementById("yearSeg").style.display = yearIrrelevant ? "none" : "flex";
+  document.getElementById("regionSeg").style.display = regionIrrelevant ? "none" : "flex";
+  document.getElementById("regionNote").classList.toggle("show", !split && !regionIrrelevant);
+}
+
+function regionLabel(region) {
+  return region === "total" ? "Total" : (region === "espana" ? "España" : "Panamá");
 }
 
 function renderKPIs(s) {
@@ -195,7 +203,7 @@ function renderChart(s) {
     datasets.push({ label, data: s.cost, borderColor: getComputedStyle(document.body).getPropertyValue("--warn").trim(), backgroundColor: "transparent", tension: .25 });
   }
 
-  document.getElementById("chartTitle").textContent = `EVOLUCIÓN MENSUAL — ${state.year} · ${state.region === 'total' ? 'Total' : (state.region === 'espana' ? 'España' : 'Panamá')}`;
+  document.getElementById("chartTitle").textContent = `EVOLUCIÓN MENSUAL — ${state.year} · ${regionLabel(state.region)}`;
   drawChart(MONTHS.slice(0, s.n), datasets);
 }
 
@@ -283,21 +291,126 @@ function renderCompare(yearData) {
   foot.innerHTML = `<td>Total (meses reales)</td><td class="${tEsp<0?'neg':'pos'}">${eur(tEsp)}</td><td class="${tPan<0?'neg':'pos'}">${eur(tPan)}</td><td class="${diff<0?'neg':'pos'}">${eur(diff)}</td><td></td>`;
 }
 
+function renderYoY(d25, d26) {
+  const n = Math.min(d25.visibleMonths || 12, d26.visibleMonths || 12);
+  const t25 = d25.total, t26 = d26.total;
+  const rev25 = t25.revenue.slice(0, n), cost25 = t25.cost.slice(0, n), real25 = t25.real.slice(0, n);
+  const rev26 = t26.revenue.slice(0, n), cost26 = t26.cost.slice(0, n), real26 = t26.real.slice(0, n);
+  const profit25 = rev25.map((r, i) => (r == null || cost25[i] == null) ? null : r - cost25[i]);
+  const profit26 = rev26.map((r, i) => (r == null || cost26[i] == null) ? null : r - cost26[i]);
+  const real = real25.map((r, i) => r && real26[i]);
+  const realIdx = real.map((r, i) => r ? i : -1).filter(i => i >= 0);
+  const sum = arr => realIdx.reduce((a, i) => a + (arr[i] || 0), 0);
+  const tRev25 = sum(rev25), tRev26 = sum(rev26), tProfit25 = sum(profit25), tProfit26 = sum(profit26);
+  const revGrowth = tRev25 ? ((tRev26 - tRev25) / Math.abs(tRev25) * 100) : null;
+  const profitGrowth = tProfit25 ? ((tProfit26 - tProfit25) / Math.abs(tProfit25) * 100) : null;
+  const growthLabel = g => g == null ? "—" : `${g >= 0 ? '+' : ''}${g.toFixed(1)}% vs 2025`;
+
+  document.getElementById("regionDisabledNote").style.display = "none";
+  const strip = document.getElementById("kpiStrip");
+  strip.style.display = "grid";
+  strip.innerHTML = `
+    <div class="kpi"><div class="label">INGRESOS 2025</div><div class="value">${eur(tRev25)}</div><div class="foot">ene–${MONTHS[n-1]}</div></div>
+    <div class="kpi"><div class="label">INGRESOS 2026</div><div class="value">${eur(tRev26)}</div><div class="foot">${growthLabel(revGrowth)}</div></div>
+    <div class="kpi"><div class="label">BENEFICIO 2025</div><div class="value ${tProfit25<0?'neg':'pos'}">${eur(tProfit25)}</div><div class="foot">ene–${MONTHS[n-1]}</div></div>
+    <div class="kpi"><div class="label">BENEFICIO 2026</div><div class="value ${tProfit26<0?'neg':'pos'}">${eur(tProfit26)}</div><div class="foot">${growthLabel(profitGrowth)}</div></div>
+  `;
+
+  document.getElementById("chartTitle").textContent = `INTERANUAL — Beneficio 2025 vs 2026 (ene–${MONTHS[n-1]})`;
+  drawChart(MONTHS.slice(0, n), [
+    { label: "Beneficio 2025", data: profit25, borderColor: getComputedStyle(document.body).getPropertyValue("--ink-soft").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderDash: [4, 3] },
+    { label: "Beneficio 2026", data: profit26, borderColor: getComputedStyle(document.body).getPropertyValue("--accent").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderWidth: 2.5 }
+  ]);
+
+  const head = document.getElementById("tableHead");
+  const body = document.getElementById("tableBody");
+  const foot = document.getElementById("tableFoot");
+  head.innerHTML = `<th>Mes</th><th>Beneficio 2025</th><th>Beneficio 2026</th><th>Variación</th><th>Estado</th>`;
+  body.innerHTML = MONTHS.slice(0, n).map((m, i) => {
+    const delta = (profit25[i] == null || profit26[i] == null) ? null : profit26[i] - profit25[i];
+    return `<tr>
+      <td>${m}</td>
+      <td class="${profit25[i]<0?'neg':(profit25[i]>0?'pos':'')}">${eur(profit25[i])}</td>
+      <td class="${profit26[i]<0?'neg':(profit26[i]>0?'pos':'')}">${eur(profit26[i])}</td>
+      <td class="${delta<0?'neg':(delta>0?'pos':'')}">${eur(delta)}</td>
+      <td><span class="status ${real[i]?'real':'est'}">${real[i]?'real':'estimado'}</span></td>
+    </tr>`;
+  }).join("");
+  const totalDelta = tProfit26 - tProfit25;
+  foot.innerHTML = `<td>Total (meses reales)</td><td class="${tProfit25<0?'neg':'pos'}">${eur(tProfit25)}</td><td class="${tProfit26<0?'neg':'pos'}">${eur(tProfit26)}</td><td class="${totalDelta<0?'neg':'pos'}">${eur(totalDelta)}</td><td></td>`;
+}
+
+function renderCumulative(yearData) {
+  const s = getSeries(yearData);
+
+  let running = 0, started = false;
+  const cum = s.profit.map(p => {
+    if (p == null) return started ? running : null;
+    running += p; started = true;
+    return running;
+  });
+
+  const realIdx = s.real.map((r, i) => (r && s.profit[i] != null) ? i : -1).filter(i => i >= 0);
+  let bestIdx = null, worstIdx = null;
+  realIdx.forEach(i => {
+    if (bestIdx == null || s.profit[i] > s.profit[bestIdx]) bestIdx = i;
+    if (worstIdx == null || s.profit[i] < s.profit[worstIdx]) worstIdx = i;
+  });
+  const negCount = realIdx.filter(i => s.profit[i] < 0).length;
+  const finalCum = realIdx.length ? cum[realIdx[realIdx.length - 1]] : null;
+  const lastRealMonth = realIdx.length ? MONTHS[realIdx[realIdx.length - 1]] : "—";
+
+  document.getElementById("regionDisabledNote").style.display = "none";
+  const strip = document.getElementById("kpiStrip");
+  strip.style.display = "grid";
+  strip.innerHTML = `
+    <div class="kpi"><div class="label">BENEFICIO ACUMULADO</div><div class="value ${finalCum<0?'neg':'pos'}">${eur(finalCum)}</div><div class="foot">a ${lastRealMonth}</div></div>
+    <div class="kpi"><div class="label">MEJOR MES</div><div class="value pos">${bestIdx!=null?eur(s.profit[bestIdx]):'—'}</div><div class="foot">${bestIdx!=null?MONTHS[bestIdx]:'—'}</div></div>
+    <div class="kpi"><div class="label">PEOR MES</div><div class="value ${worstIdx!=null && s.profit[worstIdx]<0?'neg':'pos'}">${worstIdx!=null?eur(s.profit[worstIdx]):'—'}</div><div class="foot">${worstIdx!=null?MONTHS[worstIdx]:'—'}</div></div>
+    <div class="kpi"><div class="label">MESES EN NEGATIVO</div><div class="value ${negCount>0?'neg':'pos'}">${negCount}</div><div class="foot">de ${realIdx.length} meses reales</div></div>
+  `;
+
+  document.getElementById("chartTitle").textContent = `BENEFICIO ACUMULADO — ${state.year} · ${regionLabel(state.region)}`;
+  drawChart(MONTHS.slice(0, s.n), [
+    { label: "Beneficio acumulado", data: cum, borderColor: getComputedStyle(document.body).getPropertyValue("--accent").trim(), backgroundColor: getComputedStyle(document.body).getPropertyValue("--accent-soft").trim(), tension: .25, spanGaps: false, borderWidth: 2.5, fill: true }
+  ]);
+
+  const head = document.getElementById("tableHead");
+  const body = document.getElementById("tableBody");
+  const foot = document.getElementById("tableFoot");
+  head.innerHTML = `<th>Mes</th><th>Beneficio del mes</th><th>Acumulado</th><th>Estado</th>`;
+  body.innerHTML = MONTHS.slice(0, s.n).map((m, i) => `<tr>
+      <td>${m}</td>
+      <td class="${s.profit[i]<0?'neg':(s.profit[i]>0?'pos':'')}">${eur(s.profit[i])}</td>
+      <td class="${cum[i]<0?'neg':(cum[i]>0?'pos':'')}">${eur(cum[i])}</td>
+      <td><span class="status ${s.real[i]?'real':'est'}">${s.real[i]?'real':'estimado'}</span></td>
+    </tr>`).join("");
+  foot.innerHTML = `<td>Acumulado final</td><td></td><td class="${finalCum<0?'neg':'pos'}">${eur(finalCum)}</td><td></td>`;
+}
+
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
   try {
-    const yearData = await fetchYear(state.year);
-    renderFilters(yearData);
-    if (state.view === "compare") {
-      renderCompare(yearData);
+    if (state.view === "yoy") {
+      const [d25, d26] = await Promise.all([fetchYear(2025), fetchYear(2026)]);
+      renderFilters(state.year === 2025 ? d25 : d26);
+      renderYoY(d25, d26);
     } else {
-      const s = getSeries(yearData);
-      renderKPIs(s);
-      renderChart(s);
-      renderTable(s);
+      const yearData = await fetchYear(state.year);
+      renderFilters(yearData);
+      if (state.view === "compare") {
+        renderCompare(yearData);
+      } else if (state.view === "cumulative") {
+        renderCumulative(yearData);
+      } else {
+        const s = getSeries(yearData);
+        renderKPIs(s);
+        renderChart(s);
+        renderTable(s);
+      }
     }
     loadNote.style.display = "none";
   } catch (err) {
