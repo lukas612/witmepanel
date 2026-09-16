@@ -80,7 +80,7 @@ function renderKPIs(cur, prev) {
     : `<div class="kpi"><div class="label">DESGLOSE POR PAÍS</div><div class="value">—</div><div class="foot">no disponible este año</div></div>`;
 
   document.getElementById("kpiStrip2").innerHTML = `
-    <div class="kpi"><div class="label">FACTURADO (HOLDED, EUR)</div><div class="value">${eur(cur.invoicedEur)}</div><div class="foot">España, mismos meses</div></div>
+    <div class="kpi"><div class="label">FACTURADO (HOLDED, EUR, sin IVA)</div><div class="value">${eur(cur.invoicedEur)}</div><div class="foot">España, mismos meses</div></div>
     ${panamaTile}
     <div class="kpi"><div class="label">MESES EN NEGATIVO</div><div class="value ${cur.negMonths>0?'neg':'pos'}">${cur.negMonths}</div><div class="foot">de ${cur.realIdx.length} meses reales</div></div>
     <div class="kpi"><div class="label">PERIODO</div><div class="value" style="font-size:16px;">${state.year}</div><div class="foot">ene–${MONTHS[cur.n-1]}</div></div>

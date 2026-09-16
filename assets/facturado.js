@@ -59,7 +59,7 @@ function render() {
   const otherSummary = Object.entries(otherCurrencies)
     .map(([cur, total]) => money(total, cur)).join(" · ") || "—";
   strip.innerHTML = `
-    <div class="kpi"><div class="label">FACTURADO EUR</div><div class="value">${money(totalEur, "EUR")}</div><div class="foot">${state.year}</div></div>
+    <div class="kpi"><div class="label">FACTURADO EUR (sin IVA)</div><div class="value">${money(totalEur, "EUR")}</div><div class="foot">${state.year}</div></div>
     <div class="kpi"><div class="label">FACTURAS EMITIDAS</div><div class="value">${totalInvoices}</div><div class="foot">${state.year}</div></div>
     <div class="kpi"><div class="label">MEDIA MENSUAL (EUR)</div><div class="value">${money(avgMonthly, "EUR")}</div><div class="foot">meses con facturación</div></div>
     <div class="kpi"><div class="label">OTRAS DIVISAS (sin convertir)</div><div class="value" style="font-size:14px;">${otherSummary}</div><div class="foot">USD · PLN · COP · MXN · ZAR</div></div>

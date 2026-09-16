@@ -12,7 +12,7 @@ create table if not exists public.witme_invoiced_monthly (
   year integer not null,
   month integer not null check (month between 1 and 12),
   currency text not null,
-  invoiced_total numeric not null,
+  invoiced_total numeric not null, -- net sales (subtotal), excludes tax/IVA
   invoice_count integer not null,
   primary key (year, month, currency)
 );
