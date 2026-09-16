@@ -40,6 +40,23 @@ Los ingresos de España son **implícitos** (total combinado − Panamá
 convertido), ya que la hoja de origen no los reporta por separado. 2025 no
 tiene desglose por país en la fuente.
 
+### Facturado (Holded) vs generado (hojas)
+
+Todo lo anterior mide lo **generado** cada mes (devengo). Por separado,
+`witme_invoiced_monthly(year, month, currency, invoiced_total, invoice_count)`
+guarda lo realmente **facturado** en Holded (solo entidad España), agregado
+por mes y moneda de la factura — sin convertir divisas, porque Holded
+factura a clientes internacionales en su propia moneda (EUR, USD, PLN,
+COP, MXN, ZAR). Es una tabla intencionadamente separada de
+`witme_pnl_monthly`: fecha de factura y mes de generación casi nunca
+coinciden, así que no se deben mezclar ni promediar entre sí.
+
+El token de la API de Holded se guarda en Supabase Vault como el secreto
+`holded_api_key` (creado a mano, no viene en las migraciones). Para
+refrescar los datos, vuelve a llamar a `GET /api/v2/invoices` (paginado,
+`limit=200`, cabecera `Authorization: Bearer <token>`) y reagrega por
+`(year, month, currency)` a partir del campo `date` de cada factura.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva
