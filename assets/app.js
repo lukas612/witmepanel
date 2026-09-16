@@ -5,7 +5,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
-const state = { year: 2026, region: "total" };
+const state = { year: 2026, region: "total", view: "region" };
 let chart = null;
 const yearCache = {};
 
@@ -113,13 +113,19 @@ function renderFilters(yearData) {
   document.querySelectorAll("#regionSeg button").forEach(b => {
     b.setAttribute("aria-pressed", String(b.dataset.region === state.region));
   });
+  document.querySelectorAll("#viewSeg button").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.view === state.view));
+  });
+
   const split = yearData.hasSplit;
   document.querySelectorAll("#regionSeg button[data-region='espana'], #regionSeg button[data-region='panama']")
     .forEach(b => b.disabled = !split);
+  document.querySelector("#viewSeg button[data-view='compare']").disabled = !split;
   document.getElementById("regionNote").classList.toggle("show", !split);
-  if (!split && state.region !== "total") {
-    state.region = "total";
-  }
+  if (!split && state.region !== "total") state.region = "total";
+  if (!split && state.view !== "region") state.view = "region";
+
+  document.getElementById("regionSeg").style.display = state.view === "compare" ? "none" : "flex";
 }
 
 function renderKPIs(s) {
@@ -149,7 +155,7 @@ function renderKPIs(s) {
   }
 }
 
-function renderChart(s) {
+function drawChart(labels, datasets) {
   const box = document.getElementById("mainChart").parentElement;
   if (typeof Chart === "undefined") {
     box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js). Los KPIs y la tabla siguen funcionando con normalidad.</div>';
@@ -159,22 +165,10 @@ function renderChart(s) {
   const gridColor = getComputedStyle(document.body).getPropertyValue("--line").trim();
   const inkSoft = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
 
-  const datasets = [];
-  if (s.hasRevenue) {
-    datasets.push({ label: "Ingresos", data: s.revenue, borderColor: "#3d7cbf", backgroundColor: "transparent", tension: .25, spanGaps: false });
-    datasets.push({ label: "Costes", data: s.cost, borderColor: getComputedStyle(document.body).getPropertyValue("--neg").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false });
-    datasets.push({ label: "Beneficio", data: s.profit, borderColor: getComputedStyle(document.body).getPropertyValue("--accent").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderWidth: 2.5 });
-  } else {
-    const label = state.region === "espana" ? "Costes España" : "Costes Panamá";
-    datasets.push({ label, data: s.cost, borderColor: getComputedStyle(document.body).getPropertyValue("--warn").trim(), backgroundColor: "transparent", tension: .25 });
-  }
-
-  document.getElementById("chartTitle").textContent = `EVOLUCIÓN MENSUAL — ${state.year} · ${state.region === 'total' ? 'Total' : (state.region === 'espana' ? 'España' : 'Panamá')}`;
-
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
     type: "line",
-    data: { labels: MONTHS.slice(0, s.n), datasets },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
@@ -188,6 +182,21 @@ function renderChart(s) {
       }
     }
   });
+}
+
+function renderChart(s) {
+  const datasets = [];
+  if (s.hasRevenue) {
+    datasets.push({ label: "Ingresos", data: s.revenue, borderColor: "#3d7cbf", backgroundColor: "transparent", tension: .25, spanGaps: false });
+    datasets.push({ label: "Costes", data: s.cost, borderColor: getComputedStyle(document.body).getPropertyValue("--neg").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false });
+    datasets.push({ label: "Beneficio", data: s.profit, borderColor: getComputedStyle(document.body).getPropertyValue("--accent").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderWidth: 2.5 });
+  } else {
+    const label = state.region === "espana" ? "Costes España" : "Costes Panamá";
+    datasets.push({ label, data: s.cost, borderColor: getComputedStyle(document.body).getPropertyValue("--warn").trim(), backgroundColor: "transparent", tension: .25 });
+  }
+
+  document.getElementById("chartTitle").textContent = `EVOLUCIÓN MENSUAL — ${state.year} · ${state.region === 'total' ? 'Total' : (state.region === 'espana' ? 'España' : 'Panamá')}`;
+  drawChart(MONTHS.slice(0, s.n), datasets);
 }
 
 function renderTable(s) {
@@ -227,6 +236,53 @@ function renderTable(s) {
   }
 }
 
+function profitOf(set, n) {
+  return set.revenue.slice(0, n).map((r, i) => (r == null || set.cost[i] == null) ? null : r - set.cost[i]);
+}
+
+function renderCompare(yearData) {
+  const n = yearData.visibleMonths || 12;
+  const esp = yearData.espana, pan = yearData.panama;
+  const espProfit = profitOf(esp, n);
+  const panProfit = profitOf(pan, n);
+  const real = esp.real.slice(0, n).map((r, i) => r && pan.real[i]);
+  const realIdx = real.map((r, i) => r ? i : -1).filter(i => i >= 0);
+  const sum = arr => realIdx.reduce((a, i) => a + (arr[i] || 0), 0);
+  const tEsp = sum(espProfit), tPan = sum(panProfit), diff = tPan - tEsp, combined = tEsp + tPan;
+
+  document.getElementById("regionDisabledNote").style.display = "none";
+  const strip = document.getElementById("kpiStrip");
+  strip.style.display = "grid";
+  strip.innerHTML = `
+    <div class="kpi"><div class="label">BENEFICIO ESPAÑA</div><div class="value ${tEsp<0?'neg':'pos'}">${eur(tEsp)}</div><div class="foot">${realIdx.length} meses con dato real</div></div>
+    <div class="kpi"><div class="label">BENEFICIO PANAMÁ</div><div class="value ${tPan<0?'neg':'pos'}">${eur(tPan)}</div><div class="foot">${realIdx.length} meses con dato real</div></div>
+    <div class="kpi"><div class="label">DIFERENCIA (PA − ES)</div><div class="value ${diff<0?'neg':'pos'}">${eur(diff)}</div><div class="foot">Panamá menos España</div></div>
+    <div class="kpi"><div class="label">APORTE DE PANAMÁ</div><div class="value">${pct(combined ? (tPan/combined*100) : null)}</div><div class="foot">sobre el beneficio combinado</div></div>
+  `;
+
+  document.getElementById("chartTitle").textContent = `BENEFICIO — ${state.year} · España vs Panamá`;
+  drawChart(MONTHS.slice(0, n), [
+    { label: "Beneficio España", data: espProfit, borderColor: getComputedStyle(document.body).getPropertyValue("--neg").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderWidth: 2.5 },
+    { label: "Beneficio Panamá", data: panProfit, borderColor: getComputedStyle(document.body).getPropertyValue("--accent").trim(), backgroundColor: "transparent", tension: .25, spanGaps: false, borderWidth: 2.5 }
+  ]);
+
+  const head = document.getElementById("tableHead");
+  const body = document.getElementById("tableBody");
+  const foot = document.getElementById("tableFoot");
+  head.innerHTML = `<th>Mes</th><th>Beneficio España</th><th>Beneficio Panamá</th><th>Diferencia</th><th>Estado</th>`;
+  body.innerHTML = MONTHS.slice(0, n).map((m, i) => {
+    const d = (espProfit[i] == null || panProfit[i] == null) ? null : panProfit[i] - espProfit[i];
+    return `<tr>
+      <td>${m}</td>
+      <td class="${espProfit[i]<0?'neg':(espProfit[i]>0?'pos':'')}">${eur(espProfit[i])}</td>
+      <td class="${panProfit[i]<0?'neg':(panProfit[i]>0?'pos':'')}">${eur(panProfit[i])}</td>
+      <td class="${d<0?'neg':(d>0?'pos':'')}">${eur(d)}</td>
+      <td><span class="status ${real[i]?'real':'est'}">${real[i]?'real':'estimado'}</span></td>
+    </tr>`;
+  }).join("");
+  foot.innerHTML = `<td>Total (meses reales)</td><td class="${tEsp<0?'neg':'pos'}">${eur(tEsp)}</td><td class="${tPan<0?'neg':'pos'}">${eur(tPan)}</td><td class="${diff<0?'neg':'pos'}">${eur(diff)}</td><td></td>`;
+}
+
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
   loadNote.style.display = "block";
@@ -235,10 +291,14 @@ async function renderAll() {
   try {
     const yearData = await fetchYear(state.year);
     renderFilters(yearData);
-    const s = getSeries(yearData);
-    renderKPIs(s);
-    renderChart(s);
-    renderTable(s);
+    if (state.view === "compare") {
+      renderCompare(yearData);
+    } else {
+      const s = getSeries(yearData);
+      renderKPIs(s);
+      renderChart(s);
+      renderTable(s);
+    }
     loadNote.style.display = "none";
   } catch (err) {
     console.error(err);
@@ -254,4 +314,8 @@ document.getElementById("yearSeg").addEventListener("click", (e) => {
 document.getElementById("regionSeg").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   state.region = b.dataset.region; renderAll();
+});
+document.getElementById("viewSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  state.view = b.dataset.view; renderAll();
 });
