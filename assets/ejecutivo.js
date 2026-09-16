@@ -44,8 +44,8 @@ async function fetchYear(year) {
   return yearData;
 }
 
-function totals(yearData) {
-  const n = yearData.visibleMonths || 12;
+function totals(yearData, monthsCap) {
+  const n = Math.min(yearData.visibleMonths || 12, monthsCap || 12);
   const t = yearData.total;
   const realIdx = t.real.slice(0, n).map((r, i) => r ? i : -1).filter(i => i >= 0);
   const sum = arr => realIdx.reduce((a, i) => a + (arr[i] || 0), 0);
@@ -140,7 +140,7 @@ async function renderAll() {
     document.getElementById("periodSub").textContent = `España & Panamá — ene–${MONTHS[(yearData.visibleMonths||12)-1]} ${state.year}`;
 
     const cur = totals(yearData);
-    const prev = prevYearData ? totals(prevYearData) : null;
+    const prev = prevYearData ? totals(prevYearData, cur.n) : null;
     renderKPIs(cur, prev);
     document.getElementById("chartTitle").textContent = `BENEFICIO MENSUAL GENERADO — ${state.year}`;
     renderChart(yearData, cur);
