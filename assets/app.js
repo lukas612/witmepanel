@@ -1,7 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config.js";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+import { supabase, initAuth } from "./auth.js";
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
@@ -12,56 +9,7 @@ const yearCache = {};
 const eur = n => n==null ? "—" : n.toLocaleString("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0});
 const pct = n => n==null ? "—" : n.toLocaleString("es-ES",{maximumFractionDigits:1,minimumFractionDigits:1}) + "%";
 
-// ---------------- Auth ----------------
-const loginView = document.getElementById("loginView");
-const dashboardView = document.getElementById("dashboardView");
-const loginForm = document.getElementById("loginForm");
-const loginEmail = document.getElementById("loginEmail");
-const loginMsg = document.getElementById("loginMsg");
-const loginSubmit = document.getElementById("loginSubmit");
-const logoutBtn = document.getElementById("logoutBtn");
-
-function showLogin(){
-  loginView.style.display = "flex";
-  dashboardView.style.display = "none";
-}
-function showDashboard(){
-  loginView.style.display = "none";
-  dashboardView.style.display = "block";
-  renderAll();
-}
-
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = loginEmail.value.trim();
-  loginSubmit.disabled = true;
-  loginMsg.textContent = "Enviando enlace…";
-  loginMsg.className = "login-msg";
-  const redirectTo = window.location.href.split("#")[0].split("?")[0];
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false, emailRedirectTo: redirectTo }
-  });
-  loginSubmit.disabled = false;
-  if (error) {
-    loginMsg.textContent = "No se pudo enviar el enlace. Comprueba el correo o contacta al administrador.";
-    loginMsg.className = "login-msg error";
-  } else {
-    loginMsg.textContent = "Revisa tu correo y haz clic en el enlace de acceso.";
-    loginMsg.className = "login-msg ok";
-  }
-});
-
-logoutBtn.addEventListener("click", async () => {
-  await supabase.auth.signOut();
-});
-
-supabase.auth.onAuthStateChange((_event, session) => {
-  if (session) showDashboard(); else showLogin();
-});
-
-const { data: { session: initialSession } } = await supabase.auth.getSession();
-if (initialSession) showDashboard(); else showLogin();
+initAuth(renderAll);
 
 // ---------------- Data ----------------
 async function fetchYear(year) {

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Facturado (Holded)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Facturado</h1>
+      <span class="sub">España — facturas emitidas en Holded, por mes</span>
+    </div>
+    <div>
+      <a class="page-link" href="index.html">← Generado (P&amp;L)</a>
+      <div class="filters">
+        <div class="seg" id="yearSeg"></div>
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="chart-block">
+    <div class="chart-title" id="chartTitle">FACTURADO MENSUAL (EUR)</div>
+    <div class="chart-box"><canvas id="mainChart"></canvas></div>
+  </div>
+
+  <div class="ledger">
+    <div class="chart-title">DETALLE MES A MES</div>
+    <table>
+      <thead><tr id="tableHead"></tr></thead>
+      <tbody id="tableBody"></tbody>
+      <tfoot><tr id="tableFoot"></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="footnote">
+    <strong>Notas de datos:</strong> esto es lo <strong>facturado</strong> (fecha de factura en Holded, entidad España), no lo <strong>generado</strong> — son dos criterios distintos y las fechas casi nunca coinciden con el panel de "Generado". No se convierten divisas: cada factura se cuenta en la moneda en la que se emitió (la mayoría en EUR; el resto se muestra aparte, sin tocar).
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/facturado.js"></script>
+</body>
+</html>

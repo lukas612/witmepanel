@@ -9,8 +9,14 @@ Sitio estático (sin build) + [Supabase](https://supabase.com) como backend
 
 ## Arquitectura
 
-- `index.html`, `assets/style.css`, `assets/app.js` — la app. Sin framework,
-  sin paso de build: Chart.js y `@supabase-js` se cargan por CDN.
+- `index.html` (+ `assets/app.js`) — página principal: ingresos/costes/
+  beneficio "generados" (hojas de origen).
+- `facturado.html` (+ `assets/facturado.js`) — página aparte con lo
+  realmente **facturado** en Holded (ver más abajo). Sin framework, sin
+  paso de build: Chart.js y `@supabase-js` se cargan por CDN.
+- `assets/auth.js` — login/logout compartido (magic link) entre ambas
+  páginas; comparten sesión porque están en el mismo origen.
+- `assets/style.css` — estilos compartidos.
 - `assets/config.js` — URL del proyecto Supabase y su clave pública
   (`publishable`/`anon`). Es seguro exponerla: solo puede hacer lo que las
   políticas de Row Level Security permitan.

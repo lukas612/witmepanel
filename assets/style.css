@@ -127,6 +127,12 @@ h1{
 .seg button:disabled{ opacity:.35; cursor:not-allowed; }
 .seg button:focus-visible{ outline:2px solid var(--focus); outline-offset:-2px; }
 
+.page-link{
+  display:inline-block; font-family:"IBM Plex Mono", monospace; font-size:12px;
+  color:var(--accent); text-decoration:none; margin-bottom:10px;
+}
+.page-link:hover{ text-decoration:underline; }
+
 .logout-btn{
   appearance:none; border:1px solid var(--line); border-radius:7px; background:var(--surface);
   color:var(--ink-soft); font-family:"IBM Plex Mono", monospace; font-size:12px;
