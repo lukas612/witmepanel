@@ -95,6 +95,27 @@ usa su propio tipo de cambio interno, no expuesto por la API — se probó
 tipo de referencia mensual del BCE es la aproximación más cercana posible
 sin inventar un tipo a mano).
 
+### Comprado y resultado (Holded)
+
+`witme_purchased_monthly(year, month, currency, purchased_total,
+purchased_eur, purchase_count)` es el mismo patrón que
+`witme_invoiced_monthly` pero para **compras/costes**: suma el `subtotal`
+de `GET /api/v2/purchases` menos el de `GET /api/v2/purchase-refunds`
+(devoluciones/anulaciones de compra), por `(year, month, currency)` según
+la fecha del documento, convertido a EUR con la misma tabla
+`witme_holded_fx_rates`.
+
+La página **Facturado y resultado (Holded)** combina ambas tablas para
+mostrar un **resultado a nivel Holded/facturación** (facturado − comprado)
+— una vista de rentabilidad distinta y complementaria al beneficio
+"generado" del panel principal (que usa otro criterio de fecha y también
+incluye Panamá).
+
+Se excluyeron 2 documentos de compra con fecha con error de tecleo en
+Holded (`2075-05-03`, proveedor CEDIPSA, ~76€ cada uno — probablemente
+2025) en vez de adivinar a qué mes real pertenecen; se recogerán solos en
+cuanto se corrija la fecha en Holded.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva

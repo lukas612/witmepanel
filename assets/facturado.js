@@ -4,18 +4,23 @@ const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov
 
 const state = { year: null };
 let chart = null;
-let allRows = null; // full witme_invoiced_monthly cache, fetched once
+let invoicedRows = null;
+let purchasedRows = null;
 
 const money = (n, currency) => n == null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency, maximumFractionDigits: 0 });
 
 initAuth(renderAll);
 
 async function fetchAll() {
-  if (allRows) return allRows;
-  const { data, error } = await supabase.from("witme_invoiced_monthly").select("*");
-  if (error) throw error;
-  allRows = data;
-  return allRows;
+  if (invoicedRows && purchasedRows) return;
+  const [{ data: inv, error: invErr }, { data: pur, error: purErr }] = await Promise.all([
+    supabase.from("witme_invoiced_monthly").select("*"),
+    supabase.from("witme_purchased_monthly").select("*")
+  ]);
+  if (invErr) throw invErr;
+  if (purErr) throw purErr;
+  invoicedRows = inv;
+  purchasedRows = pur;
 }
 
 function renderYearFilter(years) {
@@ -29,59 +34,73 @@ function renderYearFilter(years) {
 }
 
 function render() {
-  const rows = allRows.filter(r => r.year === state.year);
-  const eurByMonth = new Array(12).fill(0);
-  const invoicesByMonth = new Array(12).fill(0);
-  const currenciesUsed = new Set();
-  let totalEur = 0, totalInvoices = 0;
+  const invRows = invoicedRows.filter(r => r.year === state.year);
+  const purRows = purchasedRows.filter(r => r.year === state.year);
 
-  rows.forEach(r => {
+  const facturadoByMonth = new Array(12).fill(0);
+  const compradoByMonth = new Array(12).fill(0);
+  const invoicesByMonth = new Array(12).fill(0);
+  const purchasesByMonth = new Array(12).fill(0);
+  const currenciesUsed = new Set();
+
+  invRows.forEach(r => {
     const i = r.month - 1;
-    eurByMonth[i] += Number(r.invoiced_eur);
-    totalEur += Number(r.invoiced_eur);
+    facturadoByMonth[i] += Number(r.invoiced_eur);
     invoicesByMonth[i] += r.invoice_count;
-    totalInvoices += r.invoice_count;
+    currenciesUsed.add(r.currency);
+  });
+  purRows.forEach(r => {
+    const i = r.month - 1;
+    compradoByMonth[i] += Number(r.purchased_eur);
+    purchasesByMonth[i] += r.purchase_count;
     currenciesUsed.add(r.currency);
   });
 
-  const monthsWithData = eurByMonth.map((v, i) => v !== 0 || invoicesByMonth[i] > 0).lastIndexOf(true) + 1 || 12;
+  const resultadoByMonth = facturadoByMonth.map((v, i) => v - compradoByMonth[i]);
+
+  const hasData = i => facturadoByMonth[i] !== 0 || compradoByMonth[i] !== 0 || invoicesByMonth[i] > 0 || purchasesByMonth[i] > 0;
+  const monthsWithData = facturadoByMonth.map((_, i) => hasData(i)).lastIndexOf(true) + 1 || 12;
 
   document.querySelectorAll("#yearSeg button").forEach(b => {
     b.setAttribute("aria-pressed", String(Number(b.dataset.year) === state.year));
   });
 
-  const avgMonthly = totalEur / (eurByMonth.slice(0, monthsWithData).filter(v => v !== 0).length || 1);
+  const totalFacturado = facturadoByMonth.slice(0, monthsWithData).reduce((a, b) => a + b, 0);
+  const totalComprado = compradoByMonth.slice(0, monthsWithData).reduce((a, b) => a + b, 0);
+  const totalResultado = totalFacturado - totalComprado;
+  const totalInvoices = invoicesByMonth.slice(0, monthsWithData).reduce((a, b) => a + b, 0);
+  const totalPurchases = purchasesByMonth.slice(0, monthsWithData).reduce((a, b) => a + b, 0);
+  const margin = totalFacturado ? (totalResultado / totalFacturado * 100) : null;
+
   const strip = document.getElementById("kpiStrip");
   strip.style.display = "grid";
   strip.innerHTML = `
-    <div class="kpi"><div class="label">FACTURADO (sin IVA, todo en €)</div><div class="value">${money(totalEur, "EUR")}</div><div class="foot">${state.year}</div></div>
-    <div class="kpi"><div class="label">FACTURAS EMITIDAS</div><div class="value">${totalInvoices}</div><div class="foot">${state.year}</div></div>
-    <div class="kpi"><div class="label">MEDIA MENSUAL</div><div class="value">${money(avgMonthly, "EUR")}</div><div class="foot">meses con facturación</div></div>
+    <div class="kpi"><div class="label">FACTURADO (sin IVA, todo en €)</div><div class="value">${money(totalFacturado, "EUR")}</div><div class="foot">${totalInvoices} facturas</div></div>
+    <div class="kpi"><div class="label">COMPRADO (sin IVA, todo en €)</div><div class="value">${money(totalComprado, "EUR")}</div><div class="foot">${totalPurchases} compras</div></div>
+    <div class="kpi"><div class="label">RESULTADO (Holded)</div><div class="value ${totalResultado<0?'neg':'pos'}">${money(totalResultado, "EUR")}</div><div class="foot">margen ${margin!=null?margin.toFixed(1)+'%':'—'}</div></div>
     <div class="kpi"><div class="label">DIVISAS INCLUIDAS</div><div class="value" style="font-size:16px;">${[...currenciesUsed].sort().join(" · ")}</div><div class="foot">convertidas a EUR</div></div>
   `;
 
-  document.getElementById("chartTitle").textContent = `FACTURADO MENSUAL (€) — ${state.year}`;
-  drawChart(MONTHS.slice(0, monthsWithData), eurByMonth.slice(0, monthsWithData));
+  document.getElementById("chartTitle").textContent = `FACTURADO, COMPRADO Y RESULTADO (€) — ${state.year}`;
+  drawChart(MONTHS.slice(0, monthsWithData), facturadoByMonth.slice(0, monthsWithData), compradoByMonth.slice(0, monthsWithData), resultadoByMonth.slice(0, monthsWithData));
 
   const head = document.getElementById("tableHead");
   const body = document.getElementById("tableBody");
   const foot = document.getElementById("tableFoot");
-  head.innerHTML = `<th>Mes</th><th>Facturado (€)</th><th>Facturas</th><th>Desglose por divisa</th>`;
+  head.innerHTML = `<th>Mes</th><th>Facturado (€)</th><th>Comprado (€)</th><th>Resultado (€)</th>`;
   body.innerHTML = MONTHS.slice(0, monthsWithData).map((m, i) => {
-    const breakdown = rows.filter(r => r.month === i + 1)
-      .map(r => `${money(Number(r.invoiced_total), r.currency)}${r.currency !== "EUR" ? ` → ${money(Number(r.invoiced_eur), "EUR")}` : ""}`)
-      .join(", ") || "—";
+    const r = resultadoByMonth[i];
     return `<tr>
       <td>${m}</td>
-      <td>${money(eurByMonth[i], "EUR")}</td>
-      <td>${invoicesByMonth[i] || "—"}</td>
-      <td style="text-align:left; font-size:12px;">${breakdown}</td>
+      <td>${money(facturadoByMonth[i], "EUR")}</td>
+      <td>${money(compradoByMonth[i], "EUR")}</td>
+      <td class="${r<0?'neg':(r>0?'pos':'')}">${money(r, "EUR")}</td>
     </tr>`;
   }).join("");
-  foot.innerHTML = `<td>Total ${state.year}</td><td>${money(totalEur, "EUR")}</td><td>${totalInvoices}</td><td></td>`;
+  foot.innerHTML = `<td>Total ${state.year}</td><td>${money(totalFacturado, "EUR")}</td><td>${money(totalComprado, "EUR")}</td><td class="${totalResultado<0?'neg':'pos'}">${money(totalResultado, "EUR")}</td>`;
 }
 
-function drawChart(labels, data) {
+function drawChart(labels, facturado, comprado, resultado) {
   const box = document.getElementById("mainChart").parentElement;
   if (typeof Chart === "undefined") {
     box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js). Los KPIs y la tabla siguen funcionando con normalidad.</div>';
@@ -92,16 +111,24 @@ function drawChart(labels, data) {
   const inkSoft = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
   const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
   const accentSoft = getComputedStyle(document.body).getPropertyValue("--accent-soft").trim();
+  const neg = getComputedStyle(document.body).getPropertyValue("--neg").trim();
 
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
-    type: "bar",
-    data: { labels, datasets: [{ label: "Facturado EUR", data, backgroundColor: accentSoft, borderColor: accent, borderWidth: 1.5 }] },
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "Facturado", data: facturado, backgroundColor: accentSoft, borderColor: accent, borderWidth: 1.5 },
+        { type: "bar", label: "Comprado", data: comprado, backgroundColor: "transparent", borderColor: neg, borderWidth: 1.5 },
+        { type: "line", label: "Resultado", data: resultado, borderColor: "#3d7cbf", backgroundColor: "transparent", tension: .25, borderWidth: 2.5 }
+      ]
+    },
     options: {
       responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => money(c.parsed.y, "EUR") } }
+        legend: { position: "top", align: "end", labels: { color: inkSoft, boxWidth: 12, font: { family: "IBM Plex Mono", size: 11.5 } } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${money(c.parsed.y, "EUR")}` } }
       },
       scales: {
         x: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 } } },
@@ -117,8 +144,8 @@ async function renderAll() {
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
   try {
-    const rows = await fetchAll();
-    const years = [...new Set(rows.map(r => r.year))].sort();
+    await fetchAll();
+    const years = [...new Set([...invoicedRows, ...purchasedRows].map(r => r.year))].sort();
     if (state.year == null) state.year = years[years.length - 1];
     renderYearFilter(years);
     render();
