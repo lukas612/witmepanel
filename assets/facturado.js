@@ -31,59 +31,54 @@ function renderYearFilter(years) {
 function render() {
   const rows = allRows.filter(r => r.year === state.year);
   const eurByMonth = new Array(12).fill(0);
-  const eurInvoicesByMonth = new Array(12).fill(0);
-  const otherCurrencies = {}; // currency -> total (whole year)
-  let totalEur = 0, totalEurInvoices = 0, otherInvoiceCount = 0;
+  const invoicesByMonth = new Array(12).fill(0);
+  const currenciesUsed = new Set();
+  let totalEur = 0, totalInvoices = 0;
 
   rows.forEach(r => {
     const i = r.month - 1;
-    if (r.currency === "EUR") {
-      eurByMonth[i] += Number(r.invoiced_total);
-      totalEur += Number(r.invoiced_total);
-      eurInvoicesByMonth[i] += r.invoice_count;
-      totalEurInvoices += r.invoice_count;
-    } else {
-      otherCurrencies[r.currency] = (otherCurrencies[r.currency] || 0) + Number(r.invoiced_total);
-      otherInvoiceCount += r.invoice_count;
-    }
+    eurByMonth[i] += Number(r.invoiced_eur);
+    totalEur += Number(r.invoiced_eur);
+    invoicesByMonth[i] += r.invoice_count;
+    totalInvoices += r.invoice_count;
+    currenciesUsed.add(r.currency);
   });
 
-  const monthsWithData = eurByMonth.map((v, i) => v > 0 || eurInvoicesByMonth[i] > 0).lastIndexOf(true) + 1 || 12;
+  const monthsWithData = eurByMonth.map((v, i) => v !== 0 || invoicesByMonth[i] > 0).lastIndexOf(true) + 1 || 12;
 
   document.querySelectorAll("#yearSeg button").forEach(b => {
     b.setAttribute("aria-pressed", String(Number(b.dataset.year) === state.year));
   });
 
-  const avgMonthly = totalEur / (eurByMonth.slice(0, monthsWithData).filter(v => v > 0).length || 1);
+  const avgMonthly = totalEur / (eurByMonth.slice(0, monthsWithData).filter(v => v !== 0).length || 1);
   const strip = document.getElementById("kpiStrip");
   strip.style.display = "grid";
-  const otherSummary = Object.entries(otherCurrencies)
-    .map(([cur, total]) => money(total, cur)).join(" · ") || "—";
   strip.innerHTML = `
-    <div class="kpi"><div class="label">FACTURADO EUR (sin IVA)</div><div class="value">${money(totalEur, "EUR")}</div><div class="foot">${state.year}</div></div>
-    <div class="kpi"><div class="label">FACTURAS EMITIDAS (EUR)</div><div class="value">${totalEurInvoices}</div><div class="foot">${state.year}</div></div>
-    <div class="kpi"><div class="label">MEDIA MENSUAL (EUR)</div><div class="value">${money(avgMonthly, "EUR")}</div><div class="foot">meses con facturación</div></div>
-    <div class="kpi"><div class="label">OTRAS DIVISAS (sin convertir)</div><div class="value" style="font-size:14px;">${otherSummary}</div><div class="foot">${otherInvoiceCount} facturas</div></div>
+    <div class="kpi"><div class="label">FACTURADO (sin IVA, todo en €)</div><div class="value">${money(totalEur, "EUR")}</div><div class="foot">${state.year}</div></div>
+    <div class="kpi"><div class="label">FACTURAS EMITIDAS</div><div class="value">${totalInvoices}</div><div class="foot">${state.year}</div></div>
+    <div class="kpi"><div class="label">MEDIA MENSUAL</div><div class="value">${money(avgMonthly, "EUR")}</div><div class="foot">meses con facturación</div></div>
+    <div class="kpi"><div class="label">DIVISAS INCLUIDAS</div><div class="value" style="font-size:16px;">${[...currenciesUsed].sort().join(" · ")}</div><div class="foot">convertidas a EUR</div></div>
   `;
 
-  document.getElementById("chartTitle").textContent = `FACTURADO MENSUAL (EUR) — ${state.year}`;
+  document.getElementById("chartTitle").textContent = `FACTURADO MENSUAL (€) — ${state.year}`;
   drawChart(MONTHS.slice(0, monthsWithData), eurByMonth.slice(0, monthsWithData));
 
   const head = document.getElementById("tableHead");
   const body = document.getElementById("tableBody");
   const foot = document.getElementById("tableFoot");
-  head.innerHTML = `<th>Mes</th><th>Facturado EUR</th><th>Facturas EUR</th><th>Otras divisas</th>`;
+  head.innerHTML = `<th>Mes</th><th>Facturado (€)</th><th>Facturas</th><th>Desglose por divisa</th>`;
   body.innerHTML = MONTHS.slice(0, monthsWithData).map((m, i) => {
-    const others = rows.filter(r => r.month === i + 1 && r.currency !== "EUR")
-      .map(r => money(Number(r.invoiced_total), r.currency)).join(", ") || "—";
+    const breakdown = rows.filter(r => r.month === i + 1)
+      .map(r => `${money(Number(r.invoiced_total), r.currency)}${r.currency !== "EUR" ? ` → ${money(Number(r.invoiced_eur), "EUR")}` : ""}`)
+      .join(", ") || "—";
     return `<tr>
       <td>${m}</td>
       <td>${money(eurByMonth[i], "EUR")}</td>
-      <td>${eurInvoicesByMonth[i] || "—"}</td>
-      <td style="text-align:left; font-size:12px;">${others}</td>
+      <td>${invoicesByMonth[i] || "—"}</td>
+      <td style="text-align:left; font-size:12px;">${breakdown}</td>
     </tr>`;
   }).join("");
-  foot.innerHTML = `<td>Total ${state.year}</td><td>${money(totalEur, "EUR")}</td><td>${totalEurInvoices}</td><td></td>`;
+  foot.innerHTML = `<td>Total ${state.year}</td><td>${money(totalEur, "EUR")}</td><td>${totalInvoices}</td><td></td>`;
 }
 
 function drawChart(labels, data) {

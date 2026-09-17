@@ -49,15 +49,20 @@ tiene desglose por país en la fuente.
 ### Facturado (Holded) vs generado (hojas)
 
 Todo lo anterior mide lo **generado** cada mes (devengo). Por separado,
-`witme_invoiced_monthly(year, month, currency, invoiced_total, invoice_count)`
-guarda lo realmente **facturado** en Holded (solo entidad España), agregado
-por mes y moneda de la factura — `invoiced_total` es el **subtotal neto**
-de cada factura (sin IVA), no el total con impuestos. Sin convertir
-divisas, porque Holded factura a clientes internacionales en su propia
-moneda (EUR, USD, PLN, COP, MXN, ZAR). Es una tabla intencionadamente
-separada de
-`witme_pnl_monthly`: fecha de factura y mes de generación casi nunca
-coinciden, así que no se deben mezclar ni promediar entre sí.
+`witme_invoiced_monthly(year, month, currency, invoiced_total, invoiced_eur,
+invoice_count)` guarda lo realmente **facturado** en Holded (solo entidad
+España), agregado por mes y moneda de la factura:
+
+- `invoiced_total` es el **subtotal neto** de cada factura en su moneda
+  original (sin IVA, no el total con impuestos).
+- `invoiced_eur` es ese mismo importe **convertido a euros** — todas las
+  facturas se expresan en € para poder sumarlas en un único número (ver
+  tipos de cambio abajo). El desglose por divisa original sigue disponible
+  en `invoiced_total`/`currency` para auditoría.
+
+Es una tabla intencionadamente separada de `witme_pnl_monthly`: fecha de
+factura y mes de generación casi nunca coinciden, así que no se deben
+mezclar ni promediar entre sí.
 
 El token de la API de Holded se guarda en Supabase Vault como el secreto
 `holded_api_key` (creado a mano, no viene en las migraciones). Para
@@ -70,16 +75,25 @@ refrescar los datos:
 2. `GET /api/v2/credit-notes` (mismo formato de paginación) — resta su
    `subtotal` del mismo `(year, month, currency)`: una nota de crédito
    reduce lo realmente facturado (anulaciones, correcciones).
+3. Convierte a EUR con el tipo de cambio de `witme_holded_fx_rates` de ese
+   año/mes (rate_eur = € por 1 unidad de la divisa); si aparece una divisa
+   o mes sin tipo guardado, añádelo primero (ver fuentes abajo).
 
-Nota conocida: aun así esto **no cuadra exactamente** con el widget nativo
-"Ventas" del dashboard de Holded (confirmado contrastando enero-marzo
-2026). La explicación más probable: ese informe convierte todas las
-monedas a EUR con el tipo de cambio interno de Holded, que la API no
-expone — no hay un campo de importe-en-EUR en la factura ni un endpoint
-de tipos de cambio (se probó `/exchange-rates`, `/currencies`,
-`/company`: ninguno existe). Por eso aquí cada moneda se mantiene por
-separado sin convertir, en vez de inventar un tipo de cambio — mismo
-criterio que con el reparto España/Panamá.
+Tipos de cambio (`witme_holded_fx_rates`, año/mes/divisa → EUR por unidad,
+de referencia a mediados de mes, no el tipo exacto del día de la factura):
+- **dic-2023 a feb-2024**: BCE vía [Frankfurter](https://api.frankfurter.dev)
+  (`USD`, `MXN`, `ZAR` — Holded aún no facturaba en `COP` esos meses).
+- **mar-2024 en adelante**: la
+  [currency-api de @fawazahmed0](https://github.com/fawazahmed0/exchange-api)
+  (datos de origen BCE/open-source), que sí cubre `COP` — Frankfurter/BCE no
+  publica esa divisa.
+
+Contrastado contra el widget nativo "Ventas" del dashboard de Holded para
+enero-marzo 2026: la diferencia queda por debajo de ~1.000€/mes (Holded
+usa su propio tipo de cambio interno, no expuesto por la API — se probó
+`/exchange-rates`, `/currencies`, `/company`, ninguno existe — así que un
+tipo de referencia mensual del BCE es la aproximación más cercana posible
+sin inventar un tipo a mano).
 
 ### Actualizar o ampliar los datos
 

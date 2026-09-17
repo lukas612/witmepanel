@@ -16,14 +16,14 @@ async function fetchYear(year) {
   const [{ data: cfg, error: cfgErr }, { data: pnlRows, error: pnlErr }, { data: invRows, error: invErr }] = await Promise.all([
     supabase.from("witme_year_config").select("*").eq("year", year).single(),
     supabase.from("witme_pnl_monthly").select("*").eq("year", year),
-    supabase.from("witme_invoiced_monthly").select("*").eq("year", year).eq("currency", "EUR")
+    supabase.from("witme_invoiced_monthly").select("*").eq("year", year)
   ]);
   if (cfgErr) throw cfgErr;
   if (pnlErr) throw pnlErr;
   if (invErr) throw invErr;
 
   const yearData = { hasSplit: cfg.has_split, visibleMonths: cfg.visible_months, invoicedByMonth: new Array(12).fill(0) };
-  invRows.forEach(r => { yearData.invoicedByMonth[r.month - 1] += Number(r.invoiced_total); });
+  invRows.forEach(r => { yearData.invoicedByMonth[r.month - 1] += Number(r.invoiced_eur); });
 
   for (const region of ["total", "espana", "panama"]) {
     const regionRows = pnlRows.filter(r => r.region === region);
@@ -80,7 +80,7 @@ function renderKPIs(cur, prev) {
     : `<div class="kpi"><div class="label">DESGLOSE POR PAÍS</div><div class="value">—</div><div class="foot">no disponible este año</div></div>`;
 
   document.getElementById("kpiStrip2").innerHTML = `
-    <div class="kpi"><div class="label">FACTURADO (HOLDED, EUR, sin IVA)</div><div class="value">${eur(cur.invoicedEur)}</div><div class="foot">España, mismos meses</div></div>
+    <div class="kpi"><div class="label">FACTURADO (HOLDED, sin IVA)</div><div class="value">${eur(cur.invoicedEur)}</div><div class="foot">España, mismos meses</div></div>
     ${panamaTile}
     <div class="kpi"><div class="label">MESES EN NEGATIVO</div><div class="value ${cur.negMonths>0?'neg':'pos'}">${cur.negMonths}</div><div class="foot">de ${cur.realIdx.length} meses reales</div></div>
     <div class="kpi"><div class="label">PERIODO</div><div class="value" style="font-size:16px;">${state.year}</div><div class="foot">ene–${MONTHS[cur.n-1]}</div></div>
