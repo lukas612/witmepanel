@@ -111,6 +111,18 @@ mostrar un **resultado a nivel Holded/facturación** (facturado − comprado)
 "generado" del panel principal (que usa otro criterio de fecha y también
 incluye Panamá).
 
+**Importante — "Comprado" es parcial, no el coste total real.** Holded
+solo expone facturas de proveedor por API — no hay endpoint de nóminas,
+Seguridad Social ni asientos contables (se comprobó `/payroll`,
+`/employees` (sin importes de contrato), `/accounting`, `/journal`:
+ninguno da coste de personal). Contrastado contra la hoja de origen:
+enero 2026 tuvo un coste total España real de 885.543€, y "Comprado"
+aquí solo capta 704.823€ — faltan ~180.700€, más que solo la nómina de
+ese mes (~81.400€ según la hoja), así que probablemente falte también
+algún gasto fijo pagado sin factura de proveedor en Holded. El
+"Resultado" de esta página es la foto de la relación con proveedores,
+no el beneficio real de la empresa (para eso está el panel "Generado").
+
 Se excluyeron 2 documentos de compra con fecha con error de tecleo en
 Holded (`2075-05-03`, proveedor CEDIPSA, ~76€ cada uno — probablemente
 2025) en vez de adivinar a qué mes real pertenecen; se recogerán solos en

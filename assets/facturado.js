@@ -76,8 +76,8 @@ function render() {
   strip.style.display = "grid";
   strip.innerHTML = `
     <div class="kpi"><div class="label">FACTURADO (sin IVA, todo en €)</div><div class="value">${money(totalFacturado, "EUR")}</div><div class="foot">${totalInvoices} facturas</div></div>
-    <div class="kpi"><div class="label">COMPRADO (sin IVA, todo en €)</div><div class="value">${money(totalComprado, "EUR")}</div><div class="foot">${totalPurchases} compras</div></div>
-    <div class="kpi"><div class="label">RESULTADO (Holded)</div><div class="value ${totalResultado<0?'neg':'pos'}">${money(totalResultado, "EUR")}</div><div class="foot">margen ${margin!=null?margin.toFixed(1)+'%':'—'}</div></div>
+    <div class="kpi"><div class="label">COMPRADO (solo proveedores, sin IVA)</div><div class="value">${money(totalComprado, "EUR")}</div><div class="foot">${totalPurchases} compras — no incluye nómina</div></div>
+    <div class="kpi"><div class="label">RESULTADO (parcial, sin nómina)</div><div class="value ${totalResultado<0?'neg':'pos'}">${money(totalResultado, "EUR")}</div><div class="foot">margen ${margin!=null?margin.toFixed(1)+'%':'—'}</div></div>
     <div class="kpi"><div class="label">DIVISAS INCLUIDAS</div><div class="value" style="font-size:16px;">${[...currenciesUsed].sort().join(" · ")}</div><div class="foot">convertidas a EUR</div></div>
   `;
 
