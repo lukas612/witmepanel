@@ -217,6 +217,35 @@ tfoot td{
   padding-top:12px;
 }
 
+/* ---------- client review ---------- */
+.review-section{ margin:32px 0; }
+.review-head{
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+  flex-wrap:wrap; margin-bottom:12px;
+}
+.review-head .chart-title{ margin-bottom:0; }
+.toggle-reviewed{
+  font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-soft);
+  display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+}
+.toggle-reviewed input{ accent-color:var(--accent); }
+.empty-note{
+  font-size:12.5px; color:var(--ink-soft); font-style:italic; padding:14px 4px;
+}
+tbody tr.reviewed{ opacity:.45; }
+tbody tr.reviewed td:not(.review-cell){ text-decoration:line-through; }
+td.review-cell{ text-align:left; font-family:"IBM Plex Sans", sans-serif; }
+.review-btn{
+  appearance:none; border:1px solid var(--line); border-radius:5px; background:var(--surface);
+  color:var(--ink-soft); font-family:"IBM Plex Mono", monospace; font-size:11px;
+  padding:5px 10px; cursor:pointer; white-space:nowrap;
+}
+.review-btn:hover{ background:var(--surface-2); color:var(--ink); }
+.review-btn.is-reviewed{ background:var(--accent-soft); color:var(--accent); border-color:transparent; }
+.review-meta{ font-size:10.5px; color:var(--ink-soft); display:block; margin-top:3px; }
+.dev-up{ color:var(--accent); }
+.dev-down{ color:var(--neg); }
+
 /* ---------- footnote ---------- */
 .footnote{
   margin-top:28px; padding:14px 16px; background:var(--surface-2);

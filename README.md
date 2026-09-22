@@ -128,6 +128,29 @@ Holded (`2075-05-03`, proveedor CEDIPSA, ~76€ cada uno — probablemente
 2025) en vez de adivinar a qué mes real pertenecen; se recogerán solos en
 cuanto se corrija la fecha en Holded.
 
+### Revisión de clientes (Holded)
+
+`revision.html` (+ `assets/revision.js`) es una página aparte para detectar,
+por cliente, dos tipos de aviso a partir de `witme_client_invoiced_monthly`
+(facturado por `(year, month, contact_id)`, mismo criterio de fecha/EUR que
+`witme_invoiced_monthly` — factura menos notas de crédito, en €):
+
+- **Clientes que dejaron de facturar**: tuvieron más de 50€ facturados entre
+  los 3 meses anteriores al seleccionado y no tienen ninguna factura (>0€)
+  en el mes seleccionado.
+- **Facturación atípica**: el importe del mes seleccionado se desvía ±50% o
+  más de la media de sus 3 meses anteriores (se ignoran clientes con
+  importes por debajo de 200€ para evitar ruido de clientes minúsculos).
+
+Solo se pueden revisar los meses que tienen 3 meses anteriores con datos en
+`witme_client_invoiced_monthly` (la tabla solo guarda los últimos ~6 meses,
+no el histórico completo — ver Parte 4 de la sincronización semanal más
+abajo). Cada fila se puede marcar como revisada; queda guardado en
+`witme_client_alert_reviews` (año, mes, cliente, tipo de aviso, quién y
+cuándo) y no vuelve a aparecer por defecto para ese mes — hay una casilla
+"mostrar revisados" para volver a verlas. Es intencionadamente una tabla
+separada, más ligera, que no reemplaza `witme_invoiced_monthly`.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Revisión de clientes (Holded)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Revisión de clientes (Holded)</h1>
+      <span class="sub">España — clientes que dejaron de facturar y facturación atípica, mes a mes</span>
+    </div>
+    <div>
+      <nav class="page-nav">
+        <a class="page-link" href="index.html">← Generado (P&amp;L)</a>
+        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
+        <a class="page-link" href="facturado.html">Facturado (Holded)</a>
+      </nav>
+      <div class="filters">
+        <div class="seg" id="monthSeg"></div>
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="review-section">
+    <div class="review-head">
+      <div class="chart-title" id="missingTitle">CLIENTES QUE DEJARON DE FACTURAR</div>
+      <label class="toggle-reviewed"><input type="checkbox" id="showReviewedMissing"> mostrar revisados</label>
+    </div>
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Cliente</th>
+          <th>Últimos 3 meses</th>
+          <th>Este mes</th>
+          <th style="text-align:left;">Estado</th>
+        </tr></thead>
+        <tbody id="missingBody"></tbody>
+      </table>
+      <div class="empty-note" id="missingEmpty" style="display:none;">Ningún cliente activo en los 3 meses anteriores ha dejado de facturar este mes.</div>
+    </div>
+  </div>
+
+  <div class="review-section">
+    <div class="review-head">
+      <div class="chart-title" id="deviationTitle">FACTURACIÓN ATÍPICA (±50% VS. MEDIA DE LOS 3 MESES ANTERIORES)</div>
+      <label class="toggle-reviewed"><input type="checkbox" id="showReviewedDeviation"> mostrar revisados</label>
+    </div>
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Cliente</th>
+          <th>Media 3 meses previos</th>
+          <th>Este mes</th>
+          <th>Variación</th>
+          <th style="text-align:left;">Estado</th>
+        </tr></thead>
+        <tbody id="deviationBody"></tbody>
+      </table>
+      <div class="empty-note" id="deviationEmpty" style="display:none;">Ninguna desviación relevante este mes.</div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    <strong>Cómo se calcula:</strong> se compara, para el mes seleccionado, la facturación por cliente (Holded, entidad España, importes netos en €) frente a los 3 meses anteriores. <strong>"Dejó de facturar"</strong> son clientes con actividad real en esos 3 meses (&gt;50€ acumulados) y sin ninguna factura este mes. <strong>"Atípica"</strong> son clientes con factura este mes cuyo importe se desvía ±50% o más de su media de los 3 meses anteriores (se ignoran clientes con importes muy pequeños, por debajo de 200€, para evitar ruido). Marca cada fila como revisada cuando Gisela (o quien corresponda) la haya comprobado — queda guardado y no vuelve a aparecer por defecto en ese mes.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/revision.js"></script>
+</body>
+</html>
