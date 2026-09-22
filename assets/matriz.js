@@ -1,5 +1,5 @@
 import { supabase, initAuth } from "./auth.js";
-import { MONTHS, money, fetchClientData, buildIndex, evalClientMonth, toggleReview } from "./clientData.js";
+import { MONTHS, money, fetchClientData, buildIndex, evalClientMonth, toggleReview, holdedInvoiceUrl } from "./clientData.js";
 
 const ALERT_LABELS = { missing: "Dejó de facturar", deviation: "Atípica" };
 
@@ -42,6 +42,7 @@ document.getElementById("matrixFilterNote").addEventListener("click", (e) => {
   renderTable();
 });
 document.getElementById("matrixBody").addEventListener("click", async (e) => {
+  if (e.target.closest("a.invoice-link")) return;
   const td = e.target.closest("td[data-alert]");
   if (!td) return;
   const { contact: contactId, year, month, alert: alertType, reviewed } = td.dataset;
@@ -80,7 +81,8 @@ function buildClientRows() {
       const res = evalClientMonth(c, y, m);
       if (res.type === "missing") { totalMissingCells++; alertCount++; }
       if (res.type === "deviation") { totalDeviationCells++; alertCount++; }
-      if (c.byMonth.get(mk) != null) total += c.byMonth.get(mk);
+      const entry = c.byMonth.get(mk);
+      if (entry != null) total += entry.eur;
       return { monthKey: mk, year: y, month: m, ...res };
     });
     rows.push({ contactId, name: c.name, cells, total, alertCount });
@@ -99,6 +101,15 @@ function cellMatchesFilter(cell) {
   return cell.type === state.alertType;
 }
 
+function invoiceLinkHtml(invoiceIds) {
+  if (!invoiceIds || !invoiceIds.length) return "";
+  const url = holdedInvoiceUrl(invoiceIds[0]);
+  const label = invoiceIds.length > 1
+    ? `Abrir en Holded (la más reciente de ${invoiceIds.length} facturas este mes)`
+    : "Abrir factura en Holded";
+  return ` <a href="${url}" target="_blank" rel="noopener" class="invoice-link" title="${escapeHtml(label)}">🧾</a>`;
+}
+
 function cellHtml(cell, contactId, highlight) {
   const matchCls = highlight ? " cell-match" : "";
   if (cell.type === "missing" || cell.type === "deviation") {
@@ -114,10 +125,10 @@ function cellHtml(cell, contactId, highlight) {
     const pct = (cell.dev * 100).toFixed(0);
     const cls = cell.dev > 0 ? "cell-dev-up" : "cell-dev-down";
     const title = `${cell.dev > 0 ? "Subida" : "Caída"} atípica — media 3 meses previos: ${money(cell.avg)} (${pct > 0 ? "+" : ""}${pct}%) (${action})`;
-    return `<td class="${cls} cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${mark}${money(cell.curAmount)}</td>`;
+    return `<td class="${cls} cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${mark}${money(cell.curAmount)}${invoiceLinkHtml(cell.curInvoiceIds)}</td>`;
   }
   if (cell.curAmount == null) return `<td class="cell-empty${matchCls}">—</td>`;
-  return `<td class="${matchCls}">${money(cell.curAmount)}</td>`;
+  return `<td class="${matchCls}">${money(cell.curAmount)}${invoiceLinkHtml(cell.curInvoiceIds)}</td>`;
 }
 
 function renderHead() {

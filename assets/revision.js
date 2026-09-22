@@ -1,6 +1,6 @@
 import { supabase, initAuth } from "./auth.js";
 import {
-  MONTHS, money, monthKey,
+  MONTHS, money, monthKey, holdedInvoiceUrl,
   fetchClientData, buildIndex, computeReviewableMonths, computeAlerts, toggleReview
 } from "./clientData.js";
 
@@ -88,7 +88,11 @@ function renderDeviations(year, month, deviations, showReviewed) {
     const pct = (item.dev * 100).toFixed(0);
     const devClass = item.dev > 0 ? "dev-up" : "dev-down";
     const arrow = item.dev > 0 ? "▲" : "▼";
-    tr.innerHTML = `<td style="text-align:left;">${escapeHtml(item.name)}</td><td>${money(item.avg)}</td><td>${money(item.curAmount)}</td><td class="${devClass}">${arrow} ${pct > 0 ? "+" : ""}${pct}%</td>`;
+    const invoiceIds = item.curInvoiceIds || [];
+    const link = invoiceIds.length
+      ? ` <a href="${holdedInvoiceUrl(invoiceIds[0])}" target="_blank" rel="noopener" class="invoice-link" title="${invoiceIds.length > 1 ? `Abrir en Holded (la más reciente de ${invoiceIds.length} facturas)` : "Abrir factura en Holded"}">🧾</a>`
+      : "";
+    tr.innerHTML = `<td style="text-align:left;">${escapeHtml(item.name)}</td><td>${money(item.avg)}</td><td>${money(item.curAmount)}${link}</td><td class="${devClass}">${arrow} ${pct > 0 ? "+" : ""}${pct}%</td>`;
     const td = document.createElement("td");
     td.className = "review-cell";
     td.appendChild(reviewCell("deviation", year, month, item.contactId, reviewedRow));
@@ -124,7 +128,7 @@ function render() {
     <div class="kpi"><div class="label">CLIENTES QUE DEJARON DE FACTURAR</div><div class="value ${missing.length ? "neg" : ""}">${missing.length}</div><div class="foot">${missingReviewed} revisado${missingReviewed === 1 ? "" : "s"}</div></div>
     <div class="kpi"><div class="label">FACTURACIÓN ATÍPICA</div><div class="value ${deviations.length ? "neg" : ""}">${deviations.length}</div><div class="foot">${deviationReviewed} revisado${deviationReviewed === 1 ? "" : "s"}</div></div>
     <div class="kpi"><div class="label">MES EN REVISIÓN</div><div class="value" style="font-size:16px;">${MONTHS[month - 1]} ${year}</div><div class="foot">vs. media de los 3 meses anteriores</div></div>
-    <div class="kpi"><div class="label">CLIENTES ACTIVOS ESTE MES</div><div class="value">${[...indexCache.byClient.values()].filter(c => (c.byMonth.get(monthKey(year, month)) || 0) > 0).length}</div><div class="foot">con factura &gt;0€</div></div>
+    <div class="kpi"><div class="label">CLIENTES ACTIVOS ESTE MES</div><div class="value">${[...indexCache.byClient.values()].filter(c => (c.byMonth.get(monthKey(year, month))?.eur || 0) > 0).length}</div><div class="foot">con factura &gt;0€</div></div>
   `;
 
   renderMissing(year, month, missing, document.getElementById("showReviewedMissing").checked);

@@ -153,6 +153,19 @@ cuándo) y no vuelve a aparecer por defecto para ese mes — hay una casilla
 "mostrar revisados" para volver a verlas. Es intencionadamente una tabla
 separada, más ligera, que no reemplaza `witme_invoiced_monthly`.
 
+`witme_client_invoiced_monthly` también guarda `invoice_ids` (los ids de
+factura de Holded que componen ese importe, el más reciente primero, sin
+contar notas de crédito) — el icono 🧾 junto a un importe en `revision.html`
+y `matriz.html` abre esa factura directamente en
+`https://app.holded.com/sales/revenue#open:invoice-<id>`.
+
+`matriz.html` (+ `assets/matriz.js`) muestra la misma información como una
+matriz cliente × mes (en vez de una lista para un solo mes): todas las
+alertas de golpe, con filtro por tipo de aviso y/o mes, y el mismo
+mecanismo de marcar como revisado (con confirmación) que comparte datos con
+`revision.html`. `assets/clientData.js` centraliza la lógica de alertas que
+usan ambas páginas.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva

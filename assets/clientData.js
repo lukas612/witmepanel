@@ -10,6 +10,7 @@ export const DEVIATION_THRESHOLD = 0.5; // ±50%
 export const money = (n) => n == null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 export const monthKey = (y, m) => `${y}-${m}`;
 export const prevMonth = (y, m) => m === 1 ? [y - 1, 12] : [y, m - 1];
+export const holdedInvoiceUrl = (invoiceId) => `https://app.holded.com/sales/revenue#open:invoice-${invoiceId}`;
 
 export async function fetchClientData(supabase) {
   const [{ data: rows, error: rErr }, { data: reviews, error: rvErr }] = await Promise.all([
@@ -22,8 +23,8 @@ export async function fetchClientData(supabase) {
   return { rows, reviews, currentUserEmail: session?.user?.email || null };
 }
 
-// Map contact_id -> { name, byMonth: Map("y-m" -> eur) }, plus the sorted list of
-// month keys present anywhere in the data.
+// Map contact_id -> { name, byMonth: Map("y-m" -> { eur, invoiceIds }) }, plus
+// the sorted list of month keys present anywhere in the data.
 export function buildIndex(rows) {
   const byClient = new Map();
   const monthsSet = new Set();
@@ -35,7 +36,7 @@ export function buildIndex(rows) {
       byClient.set(r.contact_id, c);
     }
     c.name = r.contact_name;
-    c.byMonth.set(monthKey(r.year, r.month), Number(r.invoiced_eur));
+    c.byMonth.set(monthKey(r.year, r.month), { eur: Number(r.invoiced_eur), invoiceIds: r.invoice_ids || [] });
   }
   return { byClient, months: [...monthsSet].sort() };
 }
@@ -64,23 +65,26 @@ export function evalClientMonth(c, year, month) {
     [py, pm] = prevMonth(py, pm);
     prior.push(monthKey(py, pm));
   }
-  const priorAmounts = prior.map(k => c.byMonth.get(k)).filter(v => v != null);
+  const priorEntries = prior.map(k => c.byMonth.get(k)).filter(v => v != null);
+  const priorAmounts = priorEntries.map(e => e.eur);
   const priorTotal = priorAmounts.reduce((a, b) => a + b, 0);
-  const curAmount = c.byMonth.get(cur);
+  const curEntry = c.byMonth.get(cur);
+  const curAmount = curEntry?.eur;
+  const curInvoiceIds = curEntry?.invoiceIds || [];
 
   if (priorTotal > MIN_PRIOR_ACTIVITY && !(curAmount > 0)) {
-    return { type: "missing", priorTotal, priorAvg: priorTotal / priorAmounts.length, curAmount: curAmount || 0 };
+    return { type: "missing", priorTotal, priorAvg: priorTotal / priorAmounts.length, curAmount: curAmount || 0, curInvoiceIds };
   }
   if (curAmount != null && curAmount > 0 && priorAmounts.length >= 2) {
     const avg = priorTotal / priorAmounts.length;
     if (avg > 0) {
       const dev = (curAmount - avg) / avg;
       if (Math.abs(dev) >= DEVIATION_THRESHOLD && Math.max(avg, curAmount) >= MIN_DEVIATION_BASE) {
-        return { type: "deviation", avg, curAmount, dev };
+        return { type: "deviation", avg, curAmount, dev, curInvoiceIds };
       }
     }
   }
-  return { type: null, curAmount };
+  return { type: null, curAmount, curInvoiceIds };
 }
 
 export function computeAlerts(byClient, year, month) {
