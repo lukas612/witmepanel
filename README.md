@@ -238,11 +238,24 @@ que el total de la página cuadre con el total real de la hoja de origen.
 `pct_objetivo_profit`/`pct_objetivo_facturacion` son el cumplimiento que
 ya calcula la propia hoja contra el objetivo de ESE mes concreto — solo
 se muestran viendo un mes suelto, nunca sumados/promediados en un
-trimestre o año (no sería válido). **No se compara todavía
-automáticamente contra Objetivos** — es una vista de resultado real
-sola, mes a mes; cruzarla de verdad contra `witme_targets_monthly` (y
-quizás sustituir la hoja de Excel por introducir los datos aquí
-directamente) es un paso pendiente, no construido todavía.
+trimestre o año (no sería válido). Esta página en sí no compara contra
+Objetivos — para eso está la página "Objetivo vs Real" (ver más abajo).
+Sustituir la hoja de Excel por introducir los datos aquí directamente
+sigue siendo un paso pendiente, no construido todavía.
+
+### Objetivo vs Real
+
+`comparativa.html` (+ `assets/comparativa.js`) es el paso de comparación
+pendiente que menciona la sección anterior: cruza `witme_targets_monthly`
+con `witme_results_monthly` por mercado y vertical, para el mes,
+trimestre o año elegido, y calcula el **% de cumplimiento** de ingresos y
+de beneficio. El cumplimiento siempre se recalcula como real ÷ objetivo
+**del periodo agregado elegido** (nunca sumando ni promediando los
+porcentajes ya calculados mes a mes en la hoja de Resultados — eso daría
+un número inválido). Las filas de Colombia, Brasil, Affiliate y Otros
+(sin objetivo cargado) muestran "—" en vez de un 0% engañoso. Incluye un
+gráfico Objetivo vs Real (ingresos o beneficio, por mes o trimestre) del
+año completo, independiente del periodo elegido para la tabla.
 
 ### Actualizar o ampliar los datos
 
