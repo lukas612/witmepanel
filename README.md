@@ -181,7 +181,11 @@ facturas ya cobradas.
 La página separa **vencidas** (pasaron su fecha de vencimiento — lo que de
 verdad preocupa) de **aún no vencen** (dentro de su plazo normal de pago,
 no es un problema en sí), con filtro y orden por antigüedad de vencimiento
-o por importe. El icono 🧾 abre la factura en Holded.
+o por importe, un filtro de "vencida hace más de N días", y tres vistas:
+**detalle** (una fila por factura), **por cliente** y **por país**
+(acumulado — `contact_country`/`contact_country_code` vienen del
+`bill_address` del contacto en Holded). El filtro de días se aplica antes
+de agrupar. El icono 🧾 abre la factura en Holded.
 
 ### Actualizar o ampliar los datos
 

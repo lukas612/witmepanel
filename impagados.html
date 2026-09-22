@@ -51,11 +51,17 @@
 
   <div class="matrix-controls">
     <input type="search" id="clientSearch" placeholder="Buscar cliente o nº factura…" aria-label="Buscar cliente o número de factura">
+    <div class="seg" id="viewSeg">
+      <button data-view="detail" aria-pressed="true">Detalle</button>
+      <button data-view="client" aria-pressed="false">Por cliente</button>
+      <button data-view="country" aria-pressed="false">Por país</button>
+    </div>
     <div class="seg" id="statusSeg">
       <button data-status="all" aria-pressed="true">Todas</button>
       <button data-status="overdue" aria-pressed="false">Vencidas</button>
       <button data-status="upcoming" aria-pressed="false">Aún no vencen</button>
     </div>
+    <label class="min-days-label">Vencida hace más de <input type="number" id="minDaysOverdue" min="0" step="1" placeholder="0" aria-label="Vencida hace más de N días"> días</label>
     <div class="seg" id="sortSeg">
       <button data-sort="overdue" aria-pressed="true">Más vencidas primero</button>
       <button data-sort="amount" aria-pressed="false">Por importe</button>
@@ -64,21 +70,14 @@
 
   <div class="ledger">
     <table>
-      <thead><tr>
-        <th style="text-align:left;">Cliente</th>
-        <th style="text-align:left;">Factura</th>
-        <th>Emitida</th>
-        <th>Vence</th>
-        <th style="text-align:left;">Estado</th>
-        <th>Pendiente</th>
-      </tr></thead>
+      <thead><tr id="unpaidHead"></tr></thead>
       <tbody id="unpaidBody"></tbody>
     </table>
     <div class="empty-note" id="unpaidEmpty" style="display:none;">Ninguna factura coincide con la búsqueda o el filtro.</div>
   </div>
 
   <div class="footnote">
-    <strong>Qué es esto:</strong> todas las facturas de Holded (España) que a día de hoy no están completamente cobradas (estado "pendiente" o "pago parcial"), con el importe que falta por cobrar convertido a €. <strong>"Vencidas"</strong> ya pasaron su fecha de vencimiento — son las que de verdad preocupan. <strong>"Aún no vencen"</strong> están dentro de su plazo normal de pago, no son necesariamente un problema. El importe pendiente ya descuenta lo que el cliente haya pagado parcialmente. Esta es una foto del momento (no un histórico) — se actualiza en cada sincronización semanal, sustituyendo por completo el contenido anterior (una factura que se cobra desaparece de la lista). El icono 🧾 abre la factura directamente en Holded.
+    <strong>Qué es esto:</strong> todas las facturas de Holded (España) que a día de hoy no están completamente cobradas (estado "pendiente" o "pago parcial"), con el importe que falta por cobrar convertido a €. <strong>"Vencidas"</strong> ya pasaron su fecha de vencimiento — son las que de verdad preocupan. <strong>"Aún no vencen"</strong> están dentro de su plazo normal de pago, no son necesariamente un problema. El filtro <strong>"Vencida hace más de N días"</strong> se aplica antes de agrupar, así que las vistas "Por cliente"/"Por país" solo suman lo que cumple ese umbral. El importe pendiente ya descuenta lo que el cliente haya pagado parcialmente. Esta es una foto del momento (no un histórico) — se actualiza en cada sincronización semanal, sustituyendo por completo el contenido anterior (una factura que se cobra desaparece de la lista). El icono 🧾 abre la factura directamente en Holded. El país es el del domicilio de facturación del cliente en Holded.
   </div>
 
 </div>

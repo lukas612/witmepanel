@@ -311,6 +311,17 @@ table.matrix-table{ width:auto; min-width:100%; border-collapse:collapse; font-s
 .invoice-link{ text-decoration:none; margin-left:2px; opacity:.75; }
 .invoice-link:hover{ opacity:1; }
 
+.min-days-label{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:"IBM Plex Mono", monospace; font-size:12.5px; color:var(--ink-soft);
+}
+.min-days-label input[type=number]{
+  width:56px; font-family:"IBM Plex Mono", monospace; font-size:12.5px; padding:8px 8px;
+  border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink);
+  text-align:center;
+}
+.min-days-label input[type=number]:focus-visible{ outline:2px solid var(--focus); outline-offset:1px; }
+
 /* ---------- footnote ---------- */
 .footnote{
   margin-top:28px; padding:14px 16px; background:var(--surface-2);
