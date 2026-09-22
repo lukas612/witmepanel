@@ -81,7 +81,7 @@ function computeAlerts(byClient, year, month) {
     const curAmount = c.byMonth.get(cur);
 
     if (priorTotal > MIN_PRIOR_ACTIVITY && !(curAmount > 0)) {
-      missing.push({ contactId, name: c.name, priorTotal, curAmount: curAmount || 0 });
+      missing.push({ contactId, name: c.name, priorTotal, priorAvg: priorTotal / priorAmounts.length, curAmount: curAmount || 0 });
       continue;
     }
 
@@ -145,7 +145,7 @@ function renderMissing(year, month, missing, showReviewed) {
     shown++;
     const tr = document.createElement("tr");
     if (reviewedRow) tr.className = "reviewed";
-    tr.innerHTML = `<td style="text-align:left;">${escapeHtml(item.name)}</td><td>${money(item.priorTotal)}</td><td class="neg">${money(0)}</td>`;
+    tr.innerHTML = `<td style="text-align:left;">${escapeHtml(item.name)}</td><td>${money(item.priorAvg)}</td><td class="neg">${money(0)}</td>`;
     const td = document.createElement("td");
     td.className = "review-cell";
     td.appendChild(reviewCell("missing", year, month, item.contactId, reviewedRow));
