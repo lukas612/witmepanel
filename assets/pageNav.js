@@ -7,6 +7,7 @@ const PAGES = [
   { href: "impagados.html", label: "Impagados" },
   { href: "objetivos.html", label: "Objetivos" },
   { href: "resultados.html", label: "Resultados" },
+  { href: "comparativa.html", label: "Objetivo vs Real" },
 ];
 
 function currentPage() {

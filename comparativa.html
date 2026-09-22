@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Objetivo vs Real 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Objetivo vs Real 2026</h1>
+      <span class="sub">Cumplimiento de objetivos por mercado y vertical — ingresos y beneficio operativo</span>
+    </div>
+    <div>
+      <div class="page-menu">
+        <button class="page-menu-btn" id="pageMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">Páginas ▾</button>
+        <nav class="page-menu-panel" id="pageMenuPanel" hidden></nav>
+      </div>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="matrix-controls">
+    <div class="seg" id="monthSeg"></div>
+  </div>
+
+  <div class="ledger">
+    <table>
+      <thead><tr id="cmpHead"></tr></thead>
+      <tbody id="cmpBody"></tbody>
+      <tfoot><tr id="cmpFoot"></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="chart-block">
+    <div class="chart-title" id="chartTitle">INGRESOS — OBJETIVO VS REAL POR MES (€) — 2026</div>
+    <div class="seg" id="metricSeg" style="margin-bottom:8px;">
+      <button data-metric="revenue" aria-pressed="true">Ingresos</button>
+      <button data-metric="profit" aria-pressed="false">Beneficio</button>
+    </div>
+    <div class="seg" id="chartGranSeg" style="margin-bottom:14px;">
+      <button data-gran="month" aria-pressed="true">Por mes</button>
+      <button data-gran="quarter" aria-pressed="false">Por trimestre</button>
+    </div>
+    <div class="chart-box"><canvas id="cmpChart"></canvas></div>
+  </div>
+
+  <div class="footnote">
+    <strong>Qué es esto:</strong> cruza <strong>Objetivos</strong> (`witme_targets_monthly`) con <strong>Resultados</strong> (`witme_results_monthly`, el beneficio operativo real) por mercado y vertical, para ver el <strong>% de cumplimiento</strong> de cada uno. El cumplimiento se recalcula aquí como real ÷ objetivo del periodo elegido (mes, trimestre o año) — nunca es la media de los cumplimientos mensuales de la hoja. Las filas de <strong>Colombia, Brasil, Affiliate y Otros</strong> no tienen objetivo cargado todavía (aparecen en Resultados pero no en Objetivos) — su columna de objetivo y de cumplimiento quedan en "—", no en 0%.
+    <br><br>
+    El gráfico de abajo compara Objetivo vs Real de <strong>ingresos</strong> o <strong>beneficio</strong> (según el interruptor), mes a mes o trimestre a trimestre, siempre con el año completo — independientemente del periodo elegido arriba para la tabla.
+    <br><br>
+    <strong>⚠ Recuerda:</strong> "Real" aquí es beneficio <strong>operativo</strong> (ingresos − inversión publicitaria − herramientas), no el beneficio contable completo — no incluye nóminas ni el resto de gastos fijos de la empresa.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/comparativa.js"></script>
+</body>
+</html>
