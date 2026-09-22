@@ -34,14 +34,10 @@
       <span class="sub">Ingresos, coste, beneficio y ROI objetivo por mercado y vertical</span>
     </div>
     <div>
-      <nav class="page-nav">
-        <a class="page-link" href="index.html">Generado (P&amp;L)</a>
-        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
-        <a class="page-link" href="facturado.html">Facturado (Holded)</a>
-        <a class="page-link" href="revision.html">Revisión de clientes</a>
-        <a class="page-link" href="matriz.html">Matriz de clientes</a>
-        <a class="page-link" href="impagados.html">Impagados</a>
-      </nav>
+      <div class="page-menu">
+        <button class="page-menu-btn" id="pageMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">Páginas ▾</button>
+        <nav class="page-menu-panel" id="pageMenuPanel" hidden></nav>
+      </div>
       <div class="filters">
         <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
       </div>
@@ -52,7 +48,7 @@
   <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
 
   <div class="matrix-controls">
-    <select id="monthSelect" aria-label="Elegir periodo"></select>
+    <div class="seg" id="monthSeg"></div>
   </div>
 
   <div class="ledger">
@@ -81,6 +77,7 @@
 </div>
 
 <script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
 <script type="module" src="assets/objetivos.js"></script>
 </body>
 </html>

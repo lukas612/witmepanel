@@ -20,19 +20,19 @@ function parseMonthValue(raw) {
   return (raw === "year" || raw in QUARTERS) ? raw : Number(raw);
 }
 
-function renderMonthMenu() {
-  const select = document.getElementById("monthSelect");
-  const monthOptions = MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
-  const quarterOptions = Object.keys(QUARTERS).map(q => `<option value="${q}">${QUARTER_LABELS[q]} (${QUARTERS[q].map(m => MONTHS[m - 1]).join("-")})</option>`).join("");
-  select.innerHTML = `
-    <optgroup label="Meses">${monthOptions}</optgroup>
-    <optgroup label="Trimestres">${quarterOptions}</optgroup>
-    <option value="year">Año completo (Ene-Sep)</option>
-  `;
-  select.value = String(state.month);
-  select.addEventListener("change", () => {
-    state.month = parseMonthValue(select.value);
-    render();
+function renderMonthSeg() {
+  const seg = document.getElementById("monthSeg");
+  const buttons = MONTHS.map((m, i) => `<button data-month="${i + 1}" aria-pressed="${state.month === i + 1}">${m}</button>`);
+  for (const q of Object.keys(QUARTERS)) {
+    buttons.push(`<button data-month="${q}" aria-pressed="${state.month === q}">${QUARTER_LABELS[q]}</button>`);
+  }
+  buttons.push(`<button data-month="year" aria-pressed="${state.month === "year"}">Año completo</button>`);
+  seg.innerHTML = buttons.join("");
+  seg.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      state.month = parseMonthValue(b.dataset.month);
+      render();
+    });
   });
 }
 
@@ -195,6 +195,9 @@ function escapeHtml(s) {
 }
 
 function render() {
+  document.querySelectorAll("#monthSeg button").forEach(b => {
+    b.setAttribute("aria-pressed", String(parseMonthValue(b.dataset.month) === state.month));
+  });
   const list = rowsForSelection();
   renderKpis(list);
   renderTable(list);
@@ -297,7 +300,7 @@ async function renderAll() {
       const months = [...new Set(rows.map(r => r.month))].sort((a, b) => b - a);
       state.month = months[0];
     }
-    renderMonthMenu();
+    renderMonthSeg();
     render();
     renderChart();
     document.getElementById("chartGranSeg").addEventListener("click", (e) => {

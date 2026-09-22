@@ -34,14 +34,10 @@
       <span class="sub">España &amp; Panamá — comparativa mensual</span>
     </div>
     <div>
-      <nav class="page-nav">
-        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
-        <a class="page-link" href="facturado.html">Facturado (Holded)</a>
-        <a class="page-link" href="revision.html">Revisión de clientes</a>
-        <a class="page-link" href="matriz.html">Matriz de clientes</a>
-        <a class="page-link" href="impagados.html">Impagados</a>
-        <a class="page-link" href="objetivos.html">Objetivos</a>
-      </nav>
+      <div class="page-menu">
+        <button class="page-menu-btn" id="pageMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">Páginas ▾</button>
+        <nav class="page-menu-panel" id="pageMenuPanel" hidden></nav>
+      </div>
       <div class="filters">
         <div class="seg" id="yearSeg">
           <button data-year="2025" aria-pressed="false">2025</button>
@@ -92,6 +88,7 @@
 </div>
 
 <script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
 <script type="module" src="assets/app.js"></script>
 </body>
 </html>
