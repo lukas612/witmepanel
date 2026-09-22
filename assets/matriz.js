@@ -46,6 +46,12 @@ document.getElementById("matrixBody").addEventListener("click", async (e) => {
   if (!td) return;
   const { contact: contactId, year, month, alert: alertType, reviewed } = td.dataset;
   const isReviewed = reviewed === "1";
+  if (!isReviewed) {
+    const clientName = td.closest("tr")?.querySelector(".client-cell")?.textContent || "este cliente";
+    const monthLabel = `${MONTHS[Number(month) - 1]} ${year}`;
+    const confirmed = window.confirm(`¿Marcar como revisada la alerta "${ALERT_LABELS[alertType]}" de ${clientName} en ${monthLabel}?`);
+    if (!confirmed) return;
+  }
   td.style.cursor = "wait";
   const result = await toggleReview(supabase, alertType, Number(year), Number(month), contactId, isReviewed, currentUserEmail);
   const key = `${year}-${month}-${contactId}-${alertType}`;
@@ -100,14 +106,15 @@ function cellHtml(cell, contactId, highlight) {
     const reviewed = reviewedSet.has(key);
     const dataAttrs = `data-contact="${contactId}" data-year="${cell.year}" data-month="${cell.month}" data-alert="${cell.type}" data-reviewed="${reviewed ? 1 : 0}"`;
     const action = reviewed ? "clic para reabrir" : "clic para marcar como revisado";
+    const mark = reviewed ? "✓ " : "";
     if (cell.type === "missing") {
       const title = `Dejó de facturar — media 3 meses previos: ${money(cell.priorAvg)} (${action})`;
-      return `<td class="cell-missing cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${money(0)}</td>`;
+      return `<td class="cell-missing cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${mark}${money(0)}</td>`;
     }
     const pct = (cell.dev * 100).toFixed(0);
     const cls = cell.dev > 0 ? "cell-dev-up" : "cell-dev-down";
     const title = `${cell.dev > 0 ? "Subida" : "Caída"} atípica — media 3 meses previos: ${money(cell.avg)} (${pct > 0 ? "+" : ""}${pct}%) (${action})`;
-    return `<td class="${cls} cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${money(cell.curAmount)}</td>`;
+    return `<td class="${cls} cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${mark}${money(cell.curAmount)}</td>`;
   }
   if (cell.curAmount == null) return `<td class="cell-empty${matchCls}">—</td>`;
   return `<td class="${matchCls}">${money(cell.curAmount)}</td>`;
