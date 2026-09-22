@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -51,7 +52,7 @@
   <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
 
   <div class="matrix-controls">
-    <div class="seg" id="monthSeg"></div>
+    <select id="monthSelect" aria-label="Elegir periodo"></select>
   </div>
 
   <div class="ledger">
@@ -62,8 +63,17 @@
     </table>
   </div>
 
+  <div class="chart-block">
+    <div class="chart-title" id="chartTitle">OBJETIVO POR MES (€) — 2026</div>
+    <div class="seg" id="chartGranSeg" style="margin-bottom:14px;">
+      <button data-gran="month" aria-pressed="true">Por mes</button>
+      <button data-gran="quarter" aria-pressed="false">Por trimestre</button>
+    </div>
+    <div class="chart-box"><canvas id="targetsChart"></canvas></div>
+  </div>
+
   <div class="footnote">
-    <strong>Qué es esto:</strong> los objetivos 2026 de ingresos, coste, beneficio y ROI del equipo, por mercado y por vertical dentro de cada mercado, tal y como están en la hoja de objetivos del equipo. <strong>Q1/Q2/Q3</strong> suman los 3 meses de ese trimestre (Q1 = Ene-Mar, Q2 = Abr-Jun, Q3 = Jul-Sep) y <strong>"Año completo"</strong> suma Enero-Septiembre (los únicos meses con objetivo cargados); el ROI de cualquier acumulado (trimestre o año) se recalcula como beneficio/coste, no es la suma de los ROI mensuales. A partir de <strong>Abril</strong> la hoja separa el ingreso en <strong>"Campañas"</strong> (CPA / generación de leads) y <strong>"Monetización"</strong> (p. ej. AdSense), con su propio ROI de campañas — no se muestra en Enero-Marzo ni en Q1 porque la hoja no lo desglosaba aún. Las filas de vertical sin objetivo cargado (—) simplemente no tenían cifra en la hoja para ese mes.
+    <strong>Qué es esto:</strong> los objetivos 2026 de ingresos, coste, beneficio y ROI del equipo, por mercado y por vertical dentro de cada mercado, tal y como están en la hoja de objetivos del equipo. <strong>Q1/Q2/Q3</strong> suman los 3 meses de ese trimestre (Q1 = Ene-Mar, Q2 = Abr-Jun, Q3 = Jul-Sep) y <strong>"Año completo"</strong> suma Enero-Septiembre (los únicos meses con objetivo cargados); el ROI de cualquier acumulado (trimestre o año) se recalcula como beneficio/coste, no es la suma de los ROI mensuales. A partir de <strong>Abril</strong> la hoja separa el ingreso en <strong>"Campañas"</strong> (CPA / generación de leads) y <strong>"Monetización"</strong> (p. ej. AdSense), con su propio ROI de campañas — no se muestra en Enero-Marzo ni en Q1 porque la hoja no lo desglosaba aún. Las filas de vertical sin objetivo cargado (—) simplemente no tenían cifra en la hoja para ese mes. El gráfico de abajo siempre muestra el año completo (suma de todos los mercados), independientemente del periodo elegido arriba — solo cambia si lo ves por mes o por trimestre.
     <br><br>
     <strong>⚠ Esto son objetivos, no resultado real</strong> — este panel no compara automáticamente estas cifras contra lo generado (panel "Generado"): el ingreso de <strong>España</strong> aquí parece cubrir solo verticales concretos (Deudas, Creditio, Instadinero, Moneya, Cdirecto) y es aproximadamente la mitad del "generado" real de España en los mismos meses, así que probablemente tengan un alcance distinto. Antes de usar esto para medir cumplimiento, confirma con el equipo qué ingreso real es comparable a cada fila.
   </div>

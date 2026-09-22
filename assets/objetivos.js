@@ -10,8 +10,9 @@ const pct = (n) => n == null ? "—" : `${n.toFixed(1)}%`;
 const QUARTERS = { q1: [1, 2, 3], q2: [4, 5, 6], q3: [7, 8, 9] };
 const QUARTER_LABELS = { q1: "Q1", q2: "Q2", q3: "Q3" };
 
-const state = { month: null }; // 1-9, "q1"/"q2"/"q3" for a quarter, or "year" for full-year accumulation
+const state = { month: null, chartGran: "month" }; // month: 1-9, "q1"/"q2"/"q3" for a quarter, or "year" for full-year accumulation
 let rows = null;
+let chart = null;
 
 initAuth(renderAll);
 
@@ -19,19 +20,19 @@ function parseMonthValue(raw) {
   return (raw === "year" || raw in QUARTERS) ? raw : Number(raw);
 }
 
-function renderMonthSeg() {
-  const seg = document.getElementById("monthSeg");
-  const buttons = MONTHS.map((m, i) => `<button data-month="${i + 1}" aria-pressed="${state.month === i + 1}">${m}</button>`);
-  for (const q of Object.keys(QUARTERS)) {
-    buttons.push(`<button data-month="${q}" aria-pressed="${state.month === q}">${QUARTER_LABELS[q]}</button>`);
-  }
-  buttons.push(`<button data-month="year" aria-pressed="${state.month === "year"}">Año completo</button>`);
-  seg.innerHTML = buttons.join("");
-  seg.querySelectorAll("button").forEach(b => {
-    b.addEventListener("click", () => {
-      state.month = parseMonthValue(b.dataset.month);
-      render();
-    });
+function renderMonthMenu() {
+  const select = document.getElementById("monthSelect");
+  const monthOptions = MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+  const quarterOptions = Object.keys(QUARTERS).map(q => `<option value="${q}">${QUARTER_LABELS[q]} (${QUARTERS[q].map(m => MONTHS[m - 1]).join("-")})</option>`).join("");
+  select.innerHTML = `
+    <optgroup label="Meses">${monthOptions}</optgroup>
+    <optgroup label="Trimestres">${quarterOptions}</optgroup>
+    <option value="year">Año completo (Ene-Sep)</option>
+  `;
+  select.value = String(state.month);
+  select.addEventListener("change", () => {
+    state.month = parseMonthValue(select.value);
+    render();
   });
 }
 
@@ -194,12 +195,88 @@ function escapeHtml(s) {
 }
 
 function render() {
-  document.querySelectorAll("#monthSeg button").forEach(b => {
-    b.setAttribute("aria-pressed", String(parseMonthValue(b.dataset.month) === state.month));
-  });
   const list = rowsForSelection();
   renderKpis(list);
   renderTable(list);
+}
+
+// Market-total (vertical='') revenue/cost/profit per month, summed across all markets.
+function marketTotalsByMonth() {
+  const byMonth = new Map();
+  for (const r of rows) {
+    if (r.vertical !== "") continue;
+    const cur = byMonth.get(r.month) || { revenue: 0, cost: 0, profit: 0 };
+    cur.revenue += r.revenue || 0;
+    cur.cost += r.cost || 0;
+    cur.profit += r.profit || 0;
+    byMonth.set(r.month, cur);
+  }
+  return byMonth;
+}
+
+function renderChart() {
+  const byMonth = marketTotalsByMonth();
+  let labels, revenue, cost, profit;
+
+  if (state.chartGran === "quarter") {
+    labels = []; revenue = []; cost = []; profit = [];
+    for (const q of Object.keys(QUARTERS)) {
+      const months = QUARTERS[q].filter(m => byMonth.has(m));
+      if (!months.length) continue;
+      labels.push(QUARTER_LABELS[q]);
+      revenue.push(months.reduce((s, m) => s + byMonth.get(m).revenue, 0));
+      cost.push(months.reduce((s, m) => s + byMonth.get(m).cost, 0));
+      profit.push(months.reduce((s, m) => s + byMonth.get(m).profit, 0));
+    }
+    document.getElementById("chartTitle").textContent = "OBJETIVO POR TRIMESTRE (€) — 2026";
+  } else {
+    const months = [...byMonth.keys()].sort((a, b) => a - b);
+    labels = months.map(m => MONTHS[m - 1]);
+    revenue = months.map(m => byMonth.get(m).revenue);
+    cost = months.map(m => byMonth.get(m).cost);
+    profit = months.map(m => byMonth.get(m).profit);
+    document.getElementById("chartTitle").textContent = "OBJETIVO POR MES (€) — 2026";
+  }
+
+  drawChart(labels, revenue, cost, profit);
+}
+
+function drawChart(labels, revenue, cost, profit) {
+  const box = document.getElementById("targetsChart").parentElement;
+  if (typeof Chart === "undefined") {
+    box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js). Los KPIs y la tabla siguen funcionando con normalidad.</div>';
+    return;
+  }
+  const ctx = document.getElementById("targetsChart").getContext("2d");
+  const gridColor = getComputedStyle(document.body).getPropertyValue("--line").trim();
+  const inkSoft = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
+  const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
+  const accentSoft = getComputedStyle(document.body).getPropertyValue("--accent-soft").trim();
+  const neg = getComputedStyle(document.body).getPropertyValue("--neg").trim();
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "Ingresos", data: revenue, backgroundColor: accentSoft, borderColor: accent, borderWidth: 1.5 },
+        { type: "bar", label: "Coste", data: cost, backgroundColor: "transparent", borderColor: neg, borderWidth: 1.5 },
+        { type: "line", label: "Beneficio", data: profit, borderColor: "#3d7cbf", backgroundColor: "transparent", tension: .25, borderWidth: 2.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top", align: "end", labels: { color: inkSoft, boxWidth: 12, font: { family: "IBM Plex Mono", size: 11.5 } } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${money(c.parsed.y)}` } }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 } } },
+        y: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 }, callback: v => money(v) } }
+      }
+    }
+  });
 }
 
 async function renderAll() {
@@ -220,8 +297,16 @@ async function renderAll() {
       const months = [...new Set(rows.map(r => r.month))].sort((a, b) => b - a);
       state.month = months[0];
     }
-    renderMonthSeg();
+    renderMonthMenu();
     render();
+    renderChart();
+    document.getElementById("chartGranSeg").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-gran]");
+      if (!btn) return;
+      state.chartGran = btn.dataset.gran;
+      document.querySelectorAll("#chartGranSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      renderChart();
+    });
     loadNote.style.display = "none";
   } catch (err) {
     console.error(err);
