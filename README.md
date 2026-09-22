@@ -143,9 +143,11 @@ por cliente, dos tipos de aviso a partir de `witme_client_invoiced_monthly`
   importes por debajo de 200€ para evitar ruido de clientes minúsculos).
 
 Solo se pueden revisar los meses que tienen 3 meses anteriores con datos en
-`witme_client_invoiced_monthly` (la tabla solo guarda los últimos ~6 meses,
-no el histórico completo — ver Parte 4 de la sincronización semanal más
-abajo). Cada fila se puede marcar como revisada; queda guardado en
+`witme_client_invoiced_monthly` (la tabla guarda una ventana reciente —
+actualmente 2025-10 a 2026-09, todo 2026 más los 3 meses previos que hacían
+falta para poder revisar enero — no el histórico completo desde 2023; ver
+Parte 4 de la sincronización semanal más abajo). Cada fila se puede marcar
+como revisada; queda guardado en
 `witme_client_alert_reviews` (año, mes, cliente, tipo de aviso, quién y
 cuándo) y no vuelve a aparecer por defecto para ese mes — hay una casilla
 "mostrar revisados" para volver a verlas. Es intencionadamente una tabla
