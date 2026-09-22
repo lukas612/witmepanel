@@ -12,13 +12,29 @@ export const monthKey = (y, m) => `${y}-${m}`;
 export const prevMonth = (y, m) => m === 1 ? [y - 1, 12] : [y, m - 1];
 export const holdedInvoiceUrl = (invoiceId) => `https://app.holded.com/sales/revenue#open:invoice-${invoiceId}`;
 
+// The Supabase REST API caps a single select() at 1000 rows regardless of
+// how many actually match, silently dropping the rest — fetch in pages
+// until a page comes back short. witme_client_invoiced_monthly alone is
+// already past 1000 rows.
+async function fetchAllRows(supabase, table) {
+  const PAGE_SIZE = 1000;
+  let all = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from(table).select("*").range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    all = all.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 export async function fetchClientData(supabase) {
-  const [{ data: rows, error: rErr }, { data: reviews, error: rvErr }] = await Promise.all([
-    supabase.from("witme_client_invoiced_monthly").select("*"),
-    supabase.from("witme_client_alert_reviews").select("*")
+  const [rows, reviews] = await Promise.all([
+    fetchAllRows(supabase, "witme_client_invoiced_monthly"),
+    fetchAllRows(supabase, "witme_client_alert_reviews")
   ]);
-  if (rErr) throw rErr;
-  if (rvErr) throw rvErr;
   const { data: { session } } = await supabase.auth.getSession();
   return { rows, reviews, currentUserEmail: session?.user?.email || null };
 }
