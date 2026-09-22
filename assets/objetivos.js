@@ -7,19 +7,29 @@ const VERTICAL_ORDER = ["", "Deudas", "Creditio", "Instadinero", "Moneya", "Cdir
 const money = (n) => n == null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const pct = (n) => n == null ? "—" : `${n.toFixed(1)}%`;
 
-const state = { month: null }; // 1-9, or "year" for full-year accumulation
+const QUARTERS = { q1: [1, 2, 3], q2: [4, 5, 6], q3: [7, 8, 9] };
+const QUARTER_LABELS = { q1: "Q1", q2: "Q2", q3: "Q3" };
+
+const state = { month: null }; // 1-9, "q1"/"q2"/"q3" for a quarter, or "year" for full-year accumulation
 let rows = null;
 
 initAuth(renderAll);
 
+function parseMonthValue(raw) {
+  return (raw === "year" || raw in QUARTERS) ? raw : Number(raw);
+}
+
 function renderMonthSeg() {
   const seg = document.getElementById("monthSeg");
   const buttons = MONTHS.map((m, i) => `<button data-month="${i + 1}" aria-pressed="${state.month === i + 1}">${m}</button>`);
+  for (const q of Object.keys(QUARTERS)) {
+    buttons.push(`<button data-month="${q}" aria-pressed="${state.month === q}">${QUARTER_LABELS[q]}</button>`);
+  }
   buttons.push(`<button data-month="year" aria-pressed="${state.month === "year"}">Año completo</button>`);
   seg.innerHTML = buttons.join("");
   seg.querySelectorAll("button").forEach(b => {
     b.addEventListener("click", () => {
-      state.month = b.dataset.month === "year" ? "year" : Number(b.dataset.month);
+      state.month = parseMonthValue(b.dataset.month);
       render();
     });
   });
@@ -59,16 +69,22 @@ function accumulate(group) {
 }
 
 function rowsForSelection() {
+  let source = rows;
   if (state.month === "year") {
-    const groups = new Map();
-    for (const r of rows) {
-      const key = `${r.market}|||${r.vertical}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(r);
-    }
-    return [...groups.values()].map(accumulate);
+    // all months
+  } else if (state.month in QUARTERS) {
+    const months = QUARTERS[state.month];
+    source = rows.filter(r => months.includes(r.month));
+  } else {
+    return rows.filter(r => r.month === state.month);
   }
-  return rows.filter(r => r.month === state.month);
+  const groups = new Map();
+  for (const r of source) {
+    const key = `${r.market}|||${r.vertical}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+  return [...groups.values()].map(accumulate);
 }
 
 function renderKpis(list) {
@@ -89,7 +105,7 @@ function renderKpis(list) {
 }
 
 function renderTable(list) {
-  const showCampaigns = state.month === "year" || state.month >= 4;
+  const showCampaigns = state.month === "year" || state.month === "q2" || state.month === "q3" || (typeof state.month === "number" && state.month >= 4);
 
   const head = document.getElementById("targetsHead");
   head.innerHTML = `
@@ -179,8 +195,7 @@ function escapeHtml(s) {
 
 function render() {
   document.querySelectorAll("#monthSeg button").forEach(b => {
-    const val = b.dataset.month === "year" ? "year" : Number(b.dataset.month);
-    b.setAttribute("aria-pressed", String(val === state.month));
+    b.setAttribute("aria-pressed", String(parseMonthValue(b.dataset.month) === state.month));
   });
   const list = rowsForSelection();
   renderKpis(list);
