@@ -50,6 +50,14 @@
 
   <div class="matrix-controls">
     <input type="search" id="clientSearch" placeholder="Buscar cliente…" aria-label="Buscar cliente">
+    <div class="seg" id="alertTypeSeg">
+      <button data-type="all" aria-pressed="true">Todos los avisos</button>
+      <button data-type="missing" aria-pressed="false">Dejó de facturar</button>
+      <button data-type="deviation" aria-pressed="false">Atípica</button>
+    </div>
+    <select id="monthFilter" aria-label="Filtrar por mes">
+      <option value="all">Todos los meses</option>
+    </select>
     <div class="seg" id="sortSeg">
       <button data-sort="total" aria-pressed="true">Por total</button>
       <button data-sort="alerts" aria-pressed="false">Por avisos</button>
@@ -61,6 +69,7 @@
       <span class="legend-item"><span class="swatch swatch-up"></span> Subida atípica</span>
     </div>
   </div>
+  <div class="matrix-filter-note" id="matrixFilterNote" style="display:none;"></div>
 
   <div class="matrix-wrap">
     <table class="matrix-table">
@@ -68,10 +77,10 @@
       <tbody id="matrixBody"></tbody>
     </table>
   </div>
-  <div class="empty-note" id="matrixEmpty" style="display:none;">Ningún cliente coincide con la búsqueda.</div>
+  <div class="empty-note" id="matrixEmpty" style="display:none;">Ningún cliente coincide con la búsqueda o el filtro.</div>
 
   <div class="footnote">
-    <strong>Cómo leer la matriz:</strong> cada celda es lo facturado (Holded, España, neto en €) por ese cliente ese mes. Se colorean con los mismos criterios que la <a href="revision.html">vista de revisión</a>: <strong>rojo</strong> = dejó de facturar (tenía &gt;50€ en los 3 meses anteriores y nada este mes); <strong>ámbar</strong> = caída atípica (−50% o más vs. su media de los 3 meses anteriores); <strong>verde</strong> = subida atípica (+50% o más). Las celdas sin color de los primeros meses son porque aún no hay 3 meses anteriores con los que comparar. Un aviso ya marcado como revisado en la otra vista aparece atenuado aquí. Esta vista es solo de lectura — para marcar avisos como revisados, usa <a href="revision.html">Revisión de clientes</a>.
+    <strong>Cómo leer la matriz:</strong> cada celda es lo facturado (Holded, España, neto en €) por ese cliente ese mes. Se colorean con los mismos criterios que la <a href="revision.html">vista de revisión</a>: <strong>rojo</strong> = dejó de facturar (tenía &gt;50€ en los 3 meses anteriores y nada este mes); <strong>ámbar</strong> = caída atípica (−50% o más vs. su media de los 3 meses anteriores); <strong>verde</strong> = subida atípica (+50% o más). Las celdas sin color de los primeros meses son porque aún no hay 3 meses anteriores con los que comparar. <strong>Haz clic en una celda con aviso (roja, ámbar o verde) para marcarla como revisada</strong> — queda atenuada y el cambio se comparte con la <a href="revision.html">vista de revisión</a> (y viceversa); vuelve a hacer clic para reabrirla. Usa el filtro de tipo de aviso + mes para ver, por ejemplo, solo quién dejó de facturar en un mes concreto.
   </div>
 
 </div>

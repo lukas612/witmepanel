@@ -1,10 +1,13 @@
 import { supabase, initAuth } from "./auth.js";
-import { MONTHS, money, fetchClientData, buildIndex, evalClientMonth } from "./clientData.js";
+import { MONTHS, money, fetchClientData, buildIndex, evalClientMonth, toggleReview } from "./clientData.js";
 
-const state = { sort: "total", search: "" };
+const ALERT_LABELS = { missing: "Dejó de facturar", deviation: "Atípica" };
+
+const state = { sort: "total", search: "", alertType: "all", filterMonth: "all" };
 let indexCache = null;   // { byClient, months }
 let reviewedSet = null;  // Set("year-month-contactId-alertType") already reviewed
 let clientRows = null;   // precomputed per-client cells + totals
+let currentUserEmail = null;
 
 initAuth(renderAll);
 
@@ -17,6 +20,37 @@ document.getElementById("sortSeg").addEventListener("click", (e) => {
   if (!btn) return;
   state.sort = btn.dataset.sort;
   document.querySelectorAll("#sortSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  renderTable();
+});
+document.getElementById("alertTypeSeg").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-type]");
+  if (!btn) return;
+  state.alertType = btn.dataset.type;
+  document.querySelectorAll("#alertTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  renderTable();
+});
+document.getElementById("monthFilter").addEventListener("change", (e) => {
+  state.filterMonth = e.target.value;
+  renderTable();
+});
+document.getElementById("matrixFilterNote").addEventListener("click", (e) => {
+  if (!e.target.closest("#clearFilterBtn")) return;
+  state.alertType = "all";
+  state.filterMonth = "all";
+  document.querySelectorAll("#alertTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === "all")));
+  document.getElementById("monthFilter").value = "all";
+  renderTable();
+});
+document.getElementById("matrixBody").addEventListener("click", async (e) => {
+  const td = e.target.closest("td[data-alert]");
+  if (!td) return;
+  const { contact: contactId, year, month, alert: alertType, reviewed } = td.dataset;
+  const isReviewed = reviewed === "1";
+  td.style.cursor = "wait";
+  const result = await toggleReview(supabase, alertType, Number(year), Number(month), contactId, isReviewed, currentUserEmail);
+  const key = `${year}-${month}-${contactId}-${alertType}`;
+  if (isReviewed) reviewedSet.delete(key);
+  else if (result) reviewedSet.add(key);
   renderTable();
 });
 
@@ -38,11 +72,10 @@ function buildClientRows() {
     const cells = months.map(mk => {
       const [y, m] = mk.split("-").map(Number);
       const res = evalClientMonth(c, y, m);
-      const reviewed = res.type ? reviewedSet.has(`${y}-${m}-${contactId}-${res.type}`) : false;
       if (res.type === "missing") { totalMissingCells++; alertCount++; }
       if (res.type === "deviation") { totalDeviationCells++; alertCount++; }
       if (c.byMonth.get(mk) != null) total += c.byMonth.get(mk);
-      return { monthKey: mk, year: y, month: m, ...res, reviewed };
+      return { monthKey: mk, year: y, month: m, ...res };
     });
     rows.push({ contactId, name: c.name, cells, total, alertCount });
   }
@@ -50,19 +83,34 @@ function buildClientRows() {
   return { rows, totalMissingCells, totalDeviationCells };
 }
 
-function cellHtml(cell) {
-  if (cell.type === "missing") {
-    const title = `Dejó de facturar — media 3 meses previos: ${money(cell.priorAvg)}`;
-    return `<td class="cell-missing${cell.reviewed ? " reviewed-cell" : ""}" title="${escapeHtml(title)}">${money(0)}</td>`;
-  }
-  if (cell.type === "deviation") {
+function isFiltering() {
+  return state.alertType !== "all" || state.filterMonth !== "all";
+}
+
+function cellMatchesFilter(cell) {
+  if (state.filterMonth !== "all" && cell.monthKey !== state.filterMonth) return false;
+  if (state.alertType === "all") return cell.type != null;
+  return cell.type === state.alertType;
+}
+
+function cellHtml(cell, contactId, highlight) {
+  const matchCls = highlight ? " cell-match" : "";
+  if (cell.type === "missing" || cell.type === "deviation") {
+    const key = `${cell.year}-${cell.month}-${contactId}-${cell.type}`;
+    const reviewed = reviewedSet.has(key);
+    const dataAttrs = `data-contact="${contactId}" data-year="${cell.year}" data-month="${cell.month}" data-alert="${cell.type}" data-reviewed="${reviewed ? 1 : 0}"`;
+    const action = reviewed ? "clic para reabrir" : "clic para marcar como revisado";
+    if (cell.type === "missing") {
+      const title = `Dejó de facturar — media 3 meses previos: ${money(cell.priorAvg)} (${action})`;
+      return `<td class="cell-missing cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${money(0)}</td>`;
+    }
     const pct = (cell.dev * 100).toFixed(0);
     const cls = cell.dev > 0 ? "cell-dev-up" : "cell-dev-down";
-    const title = `${cell.dev > 0 ? "Subida" : "Caída"} atípica — media 3 meses previos: ${money(cell.avg)} (${pct > 0 ? "+" : ""}${pct}%)`;
-    return `<td class="${cls}${cell.reviewed ? " reviewed-cell" : ""}" title="${escapeHtml(title)}">${money(cell.curAmount)}</td>`;
+    const title = `${cell.dev > 0 ? "Subida" : "Caída"} atípica — media 3 meses previos: ${money(cell.avg)} (${pct > 0 ? "+" : ""}${pct}%) (${action})`;
+    return `<td class="${cls} cell-clickable${matchCls}${reviewed ? " reviewed-cell" : ""}" ${dataAttrs} title="${escapeHtml(title)}">${money(cell.curAmount)}</td>`;
   }
-  if (cell.curAmount == null) return `<td class="cell-empty">—</td>`;
-  return `<td>${money(cell.curAmount)}</td>`;
+  if (cell.curAmount == null) return `<td class="cell-empty${matchCls}">—</td>`;
+  return `<td class="${matchCls}">${money(cell.curAmount)}</td>`;
 }
 
 function renderHead() {
@@ -74,9 +122,33 @@ function renderHead() {
   head.innerHTML = `<th class="client-col">Cliente</th>${monthCols}<th class="total-col">Total</th>`;
 }
 
+function populateMonthFilter() {
+  const sel = document.getElementById("monthFilter");
+  const options = indexCache.months.map(mk => {
+    const [y, m] = mk.split("-").map(Number);
+    return `<option value="${mk}">${MONTHS[m - 1]} ${y}</option>`;
+  }).join("");
+  sel.innerHTML = `<option value="all">Todos los meses</option>${options}`;
+}
+
+function renderFilterNote(shownCount, totalCount) {
+  const note = document.getElementById("matrixFilterNote");
+  if (!isFiltering()) { note.style.display = "none"; return; }
+  const typeLabel = state.alertType === "all" ? "cualquier aviso" : `«${ALERT_LABELS[state.alertType]}»`;
+  const monthLabel = state.filterMonth === "all"
+    ? "en cualquier mes"
+    : (() => { const [y, m] = state.filterMonth.split("-").map(Number); return `en ${MONTHS[m - 1]} ${y}`; })();
+  note.style.display = "block";
+  note.innerHTML = `Mostrando ${shownCount} de ${totalCount} clientes con ${typeLabel} ${monthLabel}. <button id="clearFilterBtn">Quitar filtro</button>`;
+}
+
 function renderTable() {
   const search = state.search;
-  let rows = clientRows.rows.filter(r => !search || r.name.toLowerCase().includes(search));
+  const filtering = isFiltering();
+  let rows = clientRows.rows.filter(r =>
+    (!search || r.name.toLowerCase().includes(search)) &&
+    (!filtering || r.cells.some(cellMatchesFilter))
+  );
 
   if (state.sort === "total") rows = [...rows].sort((a, b) => b.total - a.total);
   else if (state.sort === "alerts") rows = [...rows].sort((a, b) => b.alertCount - a.alertCount || b.total - a.total);
@@ -85,9 +157,10 @@ function renderTable() {
   const body = document.getElementById("matrixBody");
   const empty = document.getElementById("matrixEmpty");
   empty.style.display = rows.length ? "none" : "block";
+  renderFilterNote(rows.length, clientRows.rows.length);
 
   body.innerHTML = rows.map(r => {
-    const cells = r.cells.map(cellHtml).join("");
+    const cells = r.cells.map(cell => cellHtml(cell, r.contactId, filtering && cellMatchesFilter(cell))).join("");
     return `<tr><td class="client-cell" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</td>${cells}<td class="total-cell">${money(r.total)}</td></tr>`;
   }).join("");
 }
@@ -113,7 +186,8 @@ async function renderAll() {
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
   try {
-    const { rows, reviews } = await fetchClientData(supabase);
+    const { rows, reviews, currentUserEmail: email } = await fetchClientData(supabase);
+    currentUserEmail = email;
     indexCache = buildIndex(rows);
     reviewedSet = new Set(reviews.map(r => `${r.year}-${r.month}-${r.contact_id}-${r.alert_type}`));
     if (!indexCache.months.length) {
@@ -125,6 +199,7 @@ async function renderAll() {
     clientRows = buildClientRows();
     renderKpis();
     renderHead();
+    populateMonthFilter();
     renderTable();
     loadNote.style.display = "none";
   } catch (err) {
