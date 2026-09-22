@@ -200,9 +200,12 @@ roi_campaigns_pct)` guarda una fila de total por mercado (`vertical=''`) y
 una fila por vertical con su responsable. Desde abril la hoja separa el
 ingreso en campañas (CPA/generación de leads) y monetización (p. ej.
 AdSense), con su propio ROI de campañas — antes de abril esas tres
-columnas quedan en `null`. La página deja elegir un mes o el año completo
-acumulado (recalculando el ROI del acumulado como beneficio/coste, no como
-la suma de los ROI mensuales).
+columnas quedan en `null`. La página deja elegir un mes, un trimestre
+(Q1-Q3) o el año completo acumulado (recalculando el ROI del acumulado
+como beneficio/coste, no como la suma de los ROI mensuales), y tiene un
+gráfico mensual/trimestral del año completo debajo de la tabla, con menú
+de navegación en la cabecera ("Páginas ▾") compartido por todas las
+páginas del panel (`assets/pageNav.js`).
 
 **Son objetivos, no resultado real — no se comparan automáticamente**
 contra `witme_pnl_monthly` ni ninguna otra tabla de esta app. El ingreso de
@@ -212,6 +215,34 @@ propio y es, para los mismos meses, aproximadamente la mitad del ingreso
 confirmar con el equipo). Antes de usar esta tabla para medir cumplimiento
 de objetivos, verifica con el equipo qué cifra real es comparable a cada
 fila.
+
+### Resultados 2026
+
+`resultados.html` (+ `assets/resultados.js`) muestra el beneficio
+**operativo** real por mercado y vertical, tal y como lo registra el
+equipo de tráfico cada semana en su propia hoja de resultados: ingresos
+menos inversión publicitaria y las herramientas ligadas directamente a
+esa venta (SMS, email…) — **no incluye nóminas ni el resto de gastos
+fijos** (para eso está el panel "Generado"). Misma forma de tabla que
+Objetivos (mismo componente de mes/trimestre/año y gráfico), en
+`witme_results_monthly(year, month, market, vertical, responsable,
+revenue, cost, cost_tools, profit, roi_pct, revenue_campaigns,
+revenue_monetization, revenue_adsense, roi_campaigns_pct,
+pct_objetivo_profit, pct_objetivo_facturacion)`.
+
+Además de los 7 mercados de Objetivos, aquí aparecen **Colombia** y
+**Brasil** (mercados nuevos, sin objetivo cargado todavía), **Affiliate**
+(Everflow, Api-partners) y un mercado **Otros** que agrupa líneas sueltas
+de la hoja (un acuerdo de medios, el coste de alguna herramienta) para
+que el total de la página cuadre con el total real de la hoja de origen.
+`pct_objetivo_profit`/`pct_objetivo_facturacion` son el cumplimiento que
+ya calcula la propia hoja contra el objetivo de ESE mes concreto — solo
+se muestran viendo un mes suelto, nunca sumados/promediados en un
+trimestre o año (no sería válido). **No se compara todavía
+automáticamente contra Objetivos** — es una vista de resultado real
+sola, mes a mes; cruzarla de verdad contra `witme_targets_monthly` (y
+quizás sustituir la hoja de Excel por introducir los datos aquí
+directamente) es un paso pendiente, no construido todavía.
 
 ### Actualizar o ampliar los datos
 

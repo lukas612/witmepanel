@@ -6,6 +6,7 @@ const PAGES = [
   { href: "matriz.html", label: "Matriz de clientes" },
   { href: "impagados.html", label: "Impagados" },
   { href: "objetivos.html", label: "Objetivos" },
+  { href: "resultados.html", label: "Resultados" },
 ];
 
 function currentPage() {

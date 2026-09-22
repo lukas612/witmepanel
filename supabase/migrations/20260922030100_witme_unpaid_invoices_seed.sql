@@ -201,7 +201,7 @@ insert into public.witme_unpaid_invoices
   ('6666fd5fa7fc9af65f0efcb3','F240470','6548a2322dd00badaf087576','Aba Prestiti srls (ABA Prestiti)','2024-06-10','2024-06-25','EUR',852.0,852.0,852.0,'pending','Italia','IT'),
   ('664b2513db7ac9449002d07c','F240377','6576e90196a10637fb0e6298','LIMEMX 24 S.A.P.I. DE C.V., SOFOM ENR (LIME24)','2024-05-20','2024-05-31','MXN',1350.0,1350.02,74.07,'pending','México','MX'),
   ('660eb8d3defabdea2a06c5b6','F240252','6576e90196a10637fb0e6298','LIMEMX 24 S.A.P.I. DE C.V., SOFOM ENR (LIME24)','2024-04-04','2024-04-30','MXN',3600.0,3600.0,203.63,'pending','México','MX'),
-  ('65e83783198bfca01107c00b','F240181','6576e90196a10637fb0e6298','LIMEMX 24 S.A.P.I. DE C.V., SOFOM ENR (LIME24)','2024-03-06','2024-04-06','MXN',3150.0,3149.93,173.28,'pending','México','MX');
+  ('65e83783198bfca01107c00b','F240181','6576e90196a10637fb0e6298','LIMEMX 24 S.A.P.I. DE C.V., SOFOM ENR (LIME24)','2024-03-06','2024-04-06','MXN',3150.0,3149.93,173.28,'pending','México','MX')
 on conflict (invoice_id) do update set
   document_number = excluded.document_number,
   contact_name = excluded.contact_name,

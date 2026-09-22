@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Resultados 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Resultados 2026</h1>
+      <span class="sub">Beneficio operativo real por mercado y vertical (ingresos − inversión publicitaria − herramientas)</span>
+    </div>
+    <div>
+      <div class="page-menu">
+        <button class="page-menu-btn" id="pageMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">Páginas ▾</button>
+        <nav class="page-menu-panel" id="pageMenuPanel" hidden></nav>
+      </div>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="matrix-controls">
+    <div class="seg" id="monthSeg"></div>
+  </div>
+
+  <div class="ledger">
+    <table>
+      <thead><tr id="resultsHead"></tr></thead>
+      <tbody id="resultsBody"></tbody>
+      <tfoot><tr id="resultsFoot"></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="chart-block">
+    <div class="chart-title" id="chartTitle">RESULTADO REAL POR MES (€) — 2026</div>
+    <div class="seg" id="chartGranSeg" style="margin-bottom:14px;">
+      <button data-gran="month" aria-pressed="true">Por mes</button>
+      <button data-gran="quarter" aria-pressed="false">Por trimestre</button>
+    </div>
+    <div class="chart-box"><canvas id="resultsChart"></canvas></div>
+  </div>
+
+  <div class="footnote">
+    <strong>Qué es esto:</strong> el beneficio <strong>operativo</strong> real, tal y como lo registra el equipo de tráfico cada semana en su hoja de resultados: ingresos menos la inversión publicitaria y las herramientas directamente ligadas a esa venta (SMS, email…). <strong>No incluye nóminas ni el resto de gastos fijos de la empresa</strong> — para el beneficio real de la empresa está el panel "Generado". Por eso mismo esta cifra no es directamente comparable a "Comprado" del panel "Facturado (Holded)" ni al "Generado" — tienen alcances distintos a propósito.
+    <br><br>
+    Además de los mercados de <strong>Objetivos</strong> (España, Portugal, Italia, Rumania, Polonia, Alemania, México), aquí aparecen <strong>Colombia</strong> y <strong>Brasil</strong> (mercados nuevos, sin objetivo cargado todavía), <strong>Affiliate</strong> (Everflow, Api-partners) y un bloque <strong>Otros</strong> que agrupa líneas sueltas (un acuerdo de medios, el coste de alguna herramienta) para que el total de esta página cuadre con el total real de la hoja. Las columnas <strong>% obj. profit</strong> y <strong>% obj. facturación</strong> son el cumplimiento que ya calcula la propia hoja contra el objetivo de ese mes — solo se muestran viendo un mes suelto (sumarlas o promediarlas en un trimestre/año no sería correcto). El gráfico de abajo siempre muestra el año completo (todos los mercados), independientemente del periodo elegido arriba.
+    <br><br>
+    <strong>Por ahora esto no se compara automáticamente</strong> contra "Objetivos" — es solo el resultado real, mes a mes. Comparar objetivo vs. real de verdad (y quizás sustituir la hoja de Excel por introducir los datos aquí directamente) es un paso pendiente, no construido todavía.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/resultados.js"></script>
+</body>
+</html>

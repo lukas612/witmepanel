@@ -238,7 +238,7 @@ insert into public.witme_targets_monthly
   (2026,6,'México','Moneya','Maye',13200.0,12000.0,1200.0,10.0,7200.0,6000.0,-40.0),
   (2026,7,'México','Moneya','Maye',13200.0,12000.0,1200.0,10.0,7200.0,6000.0,-40.0),
   (2026,8,'México','Moneya','Maye',13200.0,12000.0,1200.0,10.0,7200.0,6000.0,-40.0),
-  (2026,9,'México','Moneya','Maye',13200.0,12000.0,1200.0,10.0,7200.0,6000.0,-40.0);
+  (2026,9,'México','Moneya','Maye',13200.0,12000.0,1200.0,10.0,7200.0,6000.0,-40.0)
 on conflict (year, month, market, vertical) do update set
   responsable = excluded.responsable,
   revenue = excluded.revenue,
