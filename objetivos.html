@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Witme — Resumen ejecutivo</title>
+<title>Witme — Objetivos 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -30,44 +29,48 @@
   <header>
     <div class="brand">
       <span class="mark">WITME · CONTROL DE RESULTADOS</span>
-      <h1>Resumen ejecutivo</h1>
-      <span class="sub" id="periodSub">España &amp; Panamá</span>
+      <h1>Objetivos 2026</h1>
+      <span class="sub">Ingresos, coste, beneficio y ROI objetivo por mercado y vertical</span>
     </div>
     <div>
       <nav class="page-nav">
         <a class="page-link" href="index.html">Generado (P&amp;L)</a>
+        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
         <a class="page-link" href="facturado.html">Facturado (Holded)</a>
         <a class="page-link" href="revision.html">Revisión de clientes</a>
         <a class="page-link" href="matriz.html">Matriz de clientes</a>
         <a class="page-link" href="impagados.html">Impagados</a>
-        <a class="page-link" href="objetivos.html">Objetivos</a>
       </nav>
       <div class="filters">
-        <div class="seg" id="yearSeg">
-          <button data-year="2025" aria-pressed="false">2025</button>
-          <button data-year="2026" aria-pressed="true">2026</button>
-        </div>
         <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
       </div>
     </div>
   </header>
 
   <div class="kpis" id="kpiStrip"></div>
-  <div class="kpis" id="kpiStrip2" style="margin-top:0; border-top:none;"></div>
   <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
 
-  <div class="chart-block">
-    <div class="chart-title" id="chartTitle">BENEFICIO MENSUAL GENERADO</div>
-    <div class="chart-box"><canvas id="mainChart"></canvas></div>
+  <div class="matrix-controls">
+    <div class="seg" id="monthSeg"></div>
+  </div>
+
+  <div class="ledger">
+    <table>
+      <thead><tr id="targetsHead"></tr></thead>
+      <tbody id="targetsBody"></tbody>
+      <tfoot><tr id="targetsFoot"></tr></tfoot>
+    </table>
   </div>
 
   <div class="footnote">
-    <strong>Notas:</strong> este resumen combina lo <strong>generado</strong> (P&amp;L, meses reales) con lo <strong>facturado</strong> en Holded (España, neto sin IVA, todas las divisas convertidas a €) del mismo período — son dos criterios de fecha distintos, no se mezclan en un mismo número. El crecimiento interanual compara los mismos meses cerrados en ambos años.
+    <strong>Qué es esto:</strong> los objetivos 2026 de ingresos, coste, beneficio y ROI del equipo, por mercado y por vertical dentro de cada mercado, tal y como están en la hoja de objetivos del equipo. <strong>"Año completo"</strong> suma Enero-Septiembre (los únicos meses con objetivo cargados); el ROI del acumulado se recalcula como beneficio/coste, no es la suma de los ROI mensuales. A partir de <strong>Abril</strong> la hoja separa el ingreso en <strong>"Campañas"</strong> (CPA / generación de leads) y <strong>"Monetización"</strong> (p. ej. AdSense), con su propio ROI de campañas — no se muestra en Enero-Marzo porque la hoja no lo desglosaba aún. Las filas de vertical sin objetivo cargado (—) simplemente no tenían cifra en la hoja para ese mes.
+    <br><br>
+    <strong>⚠ Esto son objetivos, no resultado real</strong> — este panel no compara automáticamente estas cifras contra lo generado (panel "Generado"): el ingreso de <strong>España</strong> aquí parece cubrir solo verticales concretos (Deudas, Creditio, Instadinero, Moneya, Cdirecto) y es aproximadamente la mitad del "generado" real de España en los mismos meses, así que probablemente tengan un alcance distinto. Antes de usar esto para medir cumplimiento, confirma con el equipo qué ingreso real es comparable a cada fila.
   </div>
 
 </div>
 
 <script type="module" src="assets/config.js"></script>
-<script type="module" src="assets/ejecutivo.js"></script>
+<script type="module" src="assets/objetivos.js"></script>
 </body>
 </html>

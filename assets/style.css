@@ -212,6 +212,9 @@ tbody td.pos{ color:var(--accent); }
 .status.real{ background:var(--accent-soft); color:var(--accent); }
 .status.est{ background:var(--warn-soft); color:var(--warn); }
 
+.market-row td{ font-weight:600; border-top:1px solid var(--line); }
+.vertical-row td:nth-child(2){ padding-left:20px; color:var(--ink-soft); }
+
 tfoot td{
   font-weight:600; border-top:2px solid var(--line); border-bottom:none;
   padding-top:12px;

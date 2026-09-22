@@ -187,6 +187,32 @@ o por importe, un filtro de "vencida hace más de N días", y tres vistas:
 `bill_address` del contacto en Holded). El filtro de días se aplica antes
 de agrupar. El icono 🧾 abre la factura en Holded.
 
+### Objetivos 2026
+
+`objetivos.html` (+ `assets/objetivos.js`) muestra los objetivos 2026 de
+ingresos, coste, beneficio y ROI del equipo, por mercado (España, Portugal,
+Italia, Rumania, Polonia, Alemania, México) y por vertical dentro de cada
+mercado (Deudas, Creditio, Instadinero, Moneya, Cdirecto — no todos los
+mercados tienen todas), tal y como están en la hoja de objetivos del
+equipo. `witme_targets_monthly(year, month, market, vertical, responsable,
+revenue, cost, profit, roi_pct, revenue_campaigns, revenue_monetization,
+roi_campaigns_pct)` guarda una fila de total por mercado (`vertical=''`) y
+una fila por vertical con su responsable. Desde abril la hoja separa el
+ingreso en campañas (CPA/generación de leads) y monetización (p. ej.
+AdSense), con su propio ROI de campañas — antes de abril esas tres
+columnas quedan en `null`. La página deja elegir un mes o el año completo
+acumulado (recalculando el ROI del acumulado como beneficio/coste, no como
+la suma de los ROI mensuales).
+
+**Son objetivos, no resultado real — no se comparan automáticamente**
+contra `witme_pnl_monthly` ni ninguna otra tabla de esta app. El ingreso de
+"España" en esta hoja cubre aparentemente solo las verticales con nombre
+propio y es, para los mismos meses, aproximadamente la mitad del ingreso
+"generado" real de España — probablemente un alcance distinto (aún sin
+confirmar con el equipo). Antes de usar esta tabla para medir cumplimiento
+de objetivos, verifica con el equipo qué cifra real es comparable a cada
+fila.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva
