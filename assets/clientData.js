@@ -2,6 +2,8 @@
 // matriz.js grid view). Both read witme_client_invoiced_monthly /
 // witme_client_alert_reviews and apply the same "missing" / "deviation" rules.
 
+import { fetchAllRows } from "./supabaseUtil.js";
+
 export const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 export const MIN_PRIOR_ACTIVITY = 50;   // € — floor to count a client as "active" in the trailing months
 export const MIN_DEVIATION_BASE = 200;  // € — ignore deviations where both current and prior avg are tiny
@@ -11,24 +13,6 @@ export const money = (n) => n == null ? "—" : n.toLocaleString("es-ES", { styl
 export const monthKey = (y, m) => `${y}-${m}`;
 export const prevMonth = (y, m) => m === 1 ? [y - 1, 12] : [y, m - 1];
 export const holdedInvoiceUrl = (invoiceId) => `https://app.holded.com/sales/revenue#open:invoice-${invoiceId}`;
-
-// The Supabase REST API caps a single select() at 1000 rows regardless of
-// how many actually match, silently dropping the rest — fetch in pages
-// until a page comes back short. witme_client_invoiced_monthly alone is
-// already past 1000 rows.
-async function fetchAllRows(supabase, table) {
-  const PAGE_SIZE = 1000;
-  let all = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase.from(table).select("*").range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    all = all.concat(data);
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
-  }
-  return all;
-}
 
 export async function fetchClientData(supabase) {
   const [rows, reviews] = await Promise.all([

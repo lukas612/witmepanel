@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Impagados (Holded)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Impagados (Holded)</h1>
+      <span class="sub">España — facturas emitidas que aún no se han cobrado del todo</span>
+    </div>
+    <div>
+      <nav class="page-nav">
+        <a class="page-link" href="index.html">Generado (P&amp;L)</a>
+        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
+        <a class="page-link" href="facturado.html">Facturado (Holded)</a>
+        <a class="page-link" href="revision.html">Revisión de clientes</a>
+        <a class="page-link" href="matriz.html">Matriz de clientes</a>
+      </nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="matrix-controls">
+    <input type="search" id="clientSearch" placeholder="Buscar cliente o nº factura…" aria-label="Buscar cliente o número de factura">
+    <div class="seg" id="statusSeg">
+      <button data-status="all" aria-pressed="true">Todas</button>
+      <button data-status="overdue" aria-pressed="false">Vencidas</button>
+      <button data-status="upcoming" aria-pressed="false">Aún no vencen</button>
+    </div>
+    <div class="seg" id="sortSeg">
+      <button data-sort="overdue" aria-pressed="true">Más vencidas primero</button>
+      <button data-sort="amount" aria-pressed="false">Por importe</button>
+    </div>
+  </div>
+
+  <div class="ledger">
+    <table>
+      <thead><tr>
+        <th style="text-align:left;">Cliente</th>
+        <th style="text-align:left;">Factura</th>
+        <th>Emitida</th>
+        <th>Vence</th>
+        <th style="text-align:left;">Estado</th>
+        <th>Pendiente</th>
+      </tr></thead>
+      <tbody id="unpaidBody"></tbody>
+    </table>
+    <div class="empty-note" id="unpaidEmpty" style="display:none;">Ninguna factura coincide con la búsqueda o el filtro.</div>
+  </div>
+
+  <div class="footnote">
+    <strong>Qué es esto:</strong> todas las facturas de Holded (España) que a día de hoy no están completamente cobradas (estado "pendiente" o "pago parcial"), con el importe que falta por cobrar convertido a €. <strong>"Vencidas"</strong> ya pasaron su fecha de vencimiento — son las que de verdad preocupan. <strong>"Aún no vencen"</strong> están dentro de su plazo normal de pago, no son necesariamente un problema. El importe pendiente ya descuenta lo que el cliente haya pagado parcialmente. Esta es una foto del momento (no un histórico) — se actualiza en cada sincronización semanal, sustituyendo por completo el contenido anterior (una factura que se cobra desaparece de la lista). El icono 🧾 abre la factura directamente en Holded.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/impagados.js"></script>
+</body>
+</html>

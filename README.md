@@ -166,6 +166,23 @@ mecanismo de marcar como revisado (con confirmación) que comparte datos con
 `revision.html`. `assets/clientData.js` centraliza la lógica de alertas que
 usan ambas páginas.
 
+### Impagados (Holded)
+
+`impagados.html` (+ `assets/impagados.js`) lista las facturas de Holded
+(España) que a día de hoy no están cobradas del todo — `status` `pending` o
+`partial` — con el importe pendiente (`payments_pending` de Holded)
+convertido a EUR. A diferencia de las demás tablas de Holded, que son
+históricos acumulativos, `witme_unpaid_invoices` es una **foto del
+momento**: la sincronización semanal (Parte 5) hace `upsert` de las que
+siguen pendientes y **borra** las que ya se cobraron, se anularon o dejaron
+de existir — la tabla siempre refleja el estado actual, no queda rastro de
+facturas ya cobradas.
+
+La página separa **vencidas** (pasaron su fecha de vencimiento — lo que de
+verdad preocupa) de **aún no vencen** (dentro de su plazo normal de pago,
+no es un problema en sí), con filtro y orden por antigüedad de vencimiento
+o por importe. El icono 🧾 abre la factura en Holded.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva
