@@ -203,6 +203,21 @@ function sortEntries(entries) {
   return entries.sort((a, b) => b.total - a.total);
 }
 
+function renderFoot(list) {
+  const foot = document.getElementById("unpaidFoot");
+  if (!list.length) { foot.innerHTML = ""; return; }
+  const total = list.reduce((s, r) => s + r.pending_eur, 0);
+  let label;
+  if (state.view === "client") {
+    label = `Total — ${new Set(list.map(r => r.contact_id)).size} clientes, ${list.length} facturas`;
+  } else if (state.view === "country") {
+    label = `Total — ${new Set(list.map(r => r.contact_country || "Sin país")).size} países, ${list.length} facturas`;
+  } else {
+    label = `Total — ${list.length} facturas`;
+  }
+  foot.innerHTML = `<td colspan="5" style="text-align:left;">${escapeHtml(label)}</td><td>${money(total)}</td>`;
+}
+
 function render() {
   renderHead();
   let shown = filteredRows();
@@ -210,6 +225,7 @@ function render() {
   const body = document.getElementById("unpaidBody");
   const empty = document.getElementById("unpaidEmpty");
   empty.style.display = shown.length ? "none" : "block";
+  renderFoot(shown);
 
   if (state.view === "detail") {
     if (state.sort === "overdue") {
