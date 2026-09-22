@@ -1,0 +1,135 @@
+import { supabase, initAuth } from "./auth.js";
+import { MONTHS, money, fetchClientData, buildIndex, evalClientMonth } from "./clientData.js";
+
+const state = { sort: "total", search: "" };
+let indexCache = null;   // { byClient, months }
+let reviewedSet = null;  // Set("year-month-contactId-alertType") already reviewed
+let clientRows = null;   // precomputed per-client cells + totals
+
+initAuth(renderAll);
+
+document.getElementById("clientSearch").addEventListener("input", (e) => {
+  state.search = e.target.value.trim().toLowerCase();
+  renderTable();
+});
+document.getElementById("sortSeg").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-sort]");
+  if (!btn) return;
+  state.sort = btn.dataset.sort;
+  document.querySelectorAll("#sortSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  renderTable();
+});
+
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function buildClientRows() {
+  const { byClient, months } = indexCache;
+  const rows = [];
+  let totalMissingCells = 0;
+  let totalDeviationCells = 0;
+
+  for (const [contactId, c] of byClient) {
+    let total = 0;
+    let alertCount = 0;
+    const cells = months.map(mk => {
+      const [y, m] = mk.split("-").map(Number);
+      const res = evalClientMonth(c, y, m);
+      const reviewed = res.type ? reviewedSet.has(`${y}-${m}-${contactId}-${res.type}`) : false;
+      if (res.type === "missing") { totalMissingCells++; alertCount++; }
+      if (res.type === "deviation") { totalDeviationCells++; alertCount++; }
+      if (c.byMonth.get(mk) != null) total += c.byMonth.get(mk);
+      return { monthKey: mk, year: y, month: m, ...res, reviewed };
+    });
+    rows.push({ contactId, name: c.name, cells, total, alertCount });
+  }
+
+  return { rows, totalMissingCells, totalDeviationCells };
+}
+
+function cellHtml(cell) {
+  if (cell.type === "missing") {
+    const title = `Dejó de facturar — media 3 meses previos: ${money(cell.priorAvg)}`;
+    return `<td class="cell-missing${cell.reviewed ? " reviewed-cell" : ""}" title="${escapeHtml(title)}">${money(0)}</td>`;
+  }
+  if (cell.type === "deviation") {
+    const pct = (cell.dev * 100).toFixed(0);
+    const cls = cell.dev > 0 ? "cell-dev-up" : "cell-dev-down";
+    const title = `${cell.dev > 0 ? "Subida" : "Caída"} atípica — media 3 meses previos: ${money(cell.avg)} (${pct > 0 ? "+" : ""}${pct}%)`;
+    return `<td class="${cls}${cell.reviewed ? " reviewed-cell" : ""}" title="${escapeHtml(title)}">${money(cell.curAmount)}</td>`;
+  }
+  if (cell.curAmount == null) return `<td class="cell-empty">—</td>`;
+  return `<td>${money(cell.curAmount)}</td>`;
+}
+
+function renderHead() {
+  const head = document.getElementById("matrixHead");
+  const monthCols = indexCache.months.map(mk => {
+    const [y, m] = mk.split("-").map(Number);
+    return `<th>${MONTHS[m - 1]} ${String(y).slice(2)}</th>`;
+  }).join("");
+  head.innerHTML = `<th class="client-col">Cliente</th>${monthCols}<th class="total-col">Total</th>`;
+}
+
+function renderTable() {
+  const search = state.search;
+  let rows = clientRows.rows.filter(r => !search || r.name.toLowerCase().includes(search));
+
+  if (state.sort === "total") rows = [...rows].sort((a, b) => b.total - a.total);
+  else if (state.sort === "alerts") rows = [...rows].sort((a, b) => b.alertCount - a.alertCount || b.total - a.total);
+  else rows = [...rows].sort((a, b) => a.name.localeCompare(b.name, "es"));
+
+  const body = document.getElementById("matrixBody");
+  const empty = document.getElementById("matrixEmpty");
+  empty.style.display = rows.length ? "none" : "block";
+
+  body.innerHTML = rows.map(r => {
+    const cells = r.cells.map(cellHtml).join("");
+    return `<tr><td class="client-cell" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</td>${cells}<td class="total-cell">${money(r.total)}</td></tr>`;
+  }).join("");
+}
+
+function renderKpis() {
+  const strip = document.getElementById("kpiStrip");
+  strip.style.display = "grid";
+  const months = indexCache.months;
+  const rango = months.length
+    ? `${MONTHS[Number(months[0].split("-")[1]) - 1]} ${months[0].split("-")[0]} – ${MONTHS[Number(months[months.length - 1].split("-")[1]) - 1]} ${months[months.length - 1].split("-")[0]}`
+    : "—";
+  strip.innerHTML = `
+    <div class="kpi"><div class="label">CLIENTES EN LA MATRIZ</div><div class="value">${indexCache.byClient.size}</div><div class="foot">con al menos una factura en el periodo</div></div>
+    <div class="kpi"><div class="label">CELDAS "DEJÓ DE FACTURAR"</div><div class="value ${clientRows.totalMissingCells ? "neg" : ""}">${clientRows.totalMissingCells}</div><div class="foot">en todo el periodo mostrado</div></div>
+    <div class="kpi"><div class="label">CELDAS ATÍPICAS</div><div class="value ${clientRows.totalDeviationCells ? "neg" : ""}">${clientRows.totalDeviationCells}</div><div class="foot">±50% vs. media 3 meses previos</div></div>
+    <div class="kpi"><div class="label">PERIODO</div><div class="value" style="font-size:16px;">${rango}</div><div class="foot">${months.length} meses con datos</div></div>
+  `;
+}
+
+async function renderAll() {
+  const loadNote = document.getElementById("loadNote");
+  loadNote.style.display = "block";
+  loadNote.textContent = "Cargando datos…";
+  loadNote.style.color = "";
+  try {
+    const { rows, reviews } = await fetchClientData(supabase);
+    indexCache = buildIndex(rows);
+    reviewedSet = new Set(reviews.map(r => `${r.year}-${r.month}-${r.contact_id}-${r.alert_type}`));
+    if (!indexCache.months.length) {
+      loadNote.textContent = "Todavía no hay datos de facturación por cliente.";
+      loadNote.style.color = "var(--warn)";
+      document.getElementById("kpiStrip").style.display = "none";
+      return;
+    }
+    clientRows = buildClientRows();
+    renderKpis();
+    renderHead();
+    renderTable();
+    loadNote.style.display = "none";
+  } catch (err) {
+    console.error(err);
+    loadNote.textContent = "No se pudieron cargar los datos. Puede que tu cuenta no tenga acceso a este panel — contacta al administrador.";
+    loadNote.style.color = "var(--neg)";
+  }
+}

@@ -1,18 +1,13 @@
 import { supabase, initAuth } from "./auth.js";
-
-const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const MIN_PRIOR_ACTIVITY = 50;   // € — floor to count a client as "active" in the trailing months
-const MIN_DEVIATION_BASE = 200;  // € — ignore deviations where both current and prior avg are tiny
-const DEVIATION_THRESHOLD = 0.5; // ±50%
+import {
+  MONTHS, money, monthKey,
+  fetchClientData, buildIndex, computeReviewableMonths, computeAlerts, toggleReview
+} from "./clientData.js";
 
 const state = { month: null };
 let rows = null;       // witme_client_invoiced_monthly
 let reviews = null;    // witme_client_alert_reviews
 let currentUserEmail = null;
-
-const money = (n) => n == null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const monthKey = (y, m) => `${y}-${m}`;
-const prevMonth = (y, m) => m === 1 ? [y - 1, 12] : [y, m - 1];
 
 initAuth(renderAll);
 document.getElementById("showReviewedMissing").addEventListener("change", () => indexCache && render());
@@ -20,96 +15,18 @@ document.getElementById("showReviewedDeviation").addEventListener("change", () =
 
 async function fetchAll() {
   if (rows && reviews) return;
-  const [{ data: r, error: rErr }, { data: rv, error: rvErr }] = await Promise.all([
-    supabase.from("witme_client_invoiced_monthly").select("*"),
-    supabase.from("witme_client_alert_reviews").select("*")
-  ]);
-  if (rErr) throw rErr;
-  if (rvErr) throw rvErr;
-  rows = r;
-  reviews = rv;
-  const { data: { session } } = await supabase.auth.getSession();
-  currentUserEmail = session?.user?.email || null;
+  const data = await fetchClientData(supabase);
+  rows = data.rows;
+  reviews = data.reviews;
+  currentUserEmail = data.currentUserEmail;
 }
 
-function buildIndex() {
-  // Map contact_id -> { name, byMonth: Map("y-m" -> eur) }
-  const byClient = new Map();
-  const monthsSet = new Set();
-  for (const r of rows) {
-    monthsSet.add(monthKey(r.year, r.month));
-    let c = byClient.get(r.contact_id);
-    if (!c) {
-      c = { name: r.contact_name, byMonth: new Map() };
-      byClient.set(r.contact_id, c);
-    }
-    c.name = r.contact_name;
-    c.byMonth.set(monthKey(r.year, r.month), Number(r.invoiced_eur));
-  }
-  return { byClient, months: [...monthsSet].sort() };
-}
-
-function computeReviewableMonths(months) {
-  // A month is reviewable once its 3 preceding months are also present in the data.
-  const set = new Set(months);
-  return months.filter(mk => {
-    const [y, m] = mk.split("-").map(Number);
-    let yy = y, mm = m, ok = true;
-    for (let i = 0; i < 3; i++) {
-      [yy, mm] = prevMonth(yy, mm);
-      if (!set.has(monthKey(yy, mm))) ok = false;
-    }
-    return ok;
-  });
-}
-
-function computeAlerts(byClient, year, month) {
-  const cur = monthKey(year, month);
-  const prior = [];
-  let py = year, pm = month;
-  for (let i = 0; i < 3; i++) {
-    [py, pm] = prevMonth(py, pm);
-    prior.push(monthKey(py, pm));
-  }
-
-  const missing = [];
-  const deviations = [];
-
-  for (const [contactId, c] of byClient) {
-    const priorAmounts = prior.map(k => c.byMonth.get(k)).filter(v => v != null);
-    const priorTotal = priorAmounts.reduce((a, b) => a + b, 0);
-    const curAmount = c.byMonth.get(cur);
-
-    if (priorTotal > MIN_PRIOR_ACTIVITY && !(curAmount > 0)) {
-      missing.push({ contactId, name: c.name, priorTotal, priorAvg: priorTotal / priorAmounts.length, curAmount: curAmount || 0 });
-      continue;
-    }
-
-    if (curAmount != null && curAmount > 0 && priorAmounts.length >= 2) {
-      const avg = priorTotal / priorAmounts.length;
-      if (avg > 0) {
-        const dev = (curAmount - avg) / avg;
-        if (Math.abs(dev) >= DEVIATION_THRESHOLD && Math.max(avg, curAmount) >= MIN_DEVIATION_BASE) {
-          deviations.push({ contactId, name: c.name, avg, curAmount, dev });
-        }
-      }
-    }
-  }
-
-  missing.sort((a, b) => b.priorTotal - a.priorTotal);
-  deviations.sort((a, b) => Math.abs(b.curAmount - b.avg) - Math.abs(a.curAmount - a.avg));
-  return { missing, deviations };
-}
-
-async function toggleReview(alertType, year, month, contactId, isReviewed) {
+async function handleToggleReview(alertType, year, month, contactId, isReviewed) {
+  const result = await toggleReview(supabase, alertType, year, month, contactId, isReviewed, currentUserEmail);
   if (isReviewed) {
-    await supabase.from("witme_client_alert_reviews").delete()
-      .eq("year", year).eq("month", month).eq("contact_id", contactId).eq("alert_type", alertType);
     reviews = reviews.filter(r => !(r.year === year && r.month === month && r.contact_id === contactId && r.alert_type === alertType));
-  } else {
-    const row = { year, month, contact_id: contactId, alert_type: alertType, reviewed_by: currentUserEmail };
-    const { data, error } = await supabase.from("witme_client_alert_reviews").upsert(row).select();
-    if (!error && data && data[0]) reviews.push(data[0]);
+  } else if (result) {
+    reviews.push(result);
   }
   render();
 }
@@ -119,7 +36,7 @@ function reviewCell(alertType, year, month, contactId, reviewedRow) {
   const btn = document.createElement("button");
   btn.className = "review-btn" + (isReviewed ? " is-reviewed" : "");
   btn.textContent = isReviewed ? "✓ Revisado" : "Marcar revisado";
-  btn.addEventListener("click", () => toggleReview(alertType, year, month, contactId, isReviewed));
+  btn.addEventListener("click", () => handleToggleReview(alertType, year, month, contactId, isReviewed));
   const wrap = document.createElement("div");
   wrap.appendChild(btn);
   if (isReviewed && reviewedRow.reviewed_by) {
@@ -232,7 +149,7 @@ async function renderAll() {
   loadNote.style.color = "";
   try {
     await fetchAll();
-    indexCache = buildIndex();
+    indexCache = buildIndex(rows);
     reviewableMonths = computeReviewableMonths(indexCache.months);
     if (!reviewableMonths.length) {
       loadNote.textContent = "No hay suficientes meses de datos todavía (hacen falta al menos 4 meses seguidos) para calcular alertas.";

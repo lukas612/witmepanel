@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Matriz de clientes (Holded)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Matriz de clientes (Holded)</h1>
+      <span class="sub">España — facturado por cliente, mes a mes, con avisos de meses vacíos o atípicos</span>
+    </div>
+    <div>
+      <nav class="page-nav">
+        <a class="page-link" href="index.html">Generado (P&amp;L)</a>
+        <a class="page-link" href="ejecutivo.html">Resumen ejecutivo</a>
+        <a class="page-link" href="facturado.html">Facturado (Holded)</a>
+        <a class="page-link" href="revision.html">Revisión de clientes</a>
+      </nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="matrix-controls">
+    <input type="search" id="clientSearch" placeholder="Buscar cliente…" aria-label="Buscar cliente">
+    <div class="seg" id="sortSeg">
+      <button data-sort="total" aria-pressed="true">Por total</button>
+      <button data-sort="alerts" aria-pressed="false">Por avisos</button>
+      <button data-sort="name" aria-pressed="false">Por nombre</button>
+    </div>
+    <div class="matrix-legend">
+      <span class="legend-item"><span class="swatch swatch-missing"></span> Dejó de facturar</span>
+      <span class="legend-item"><span class="swatch swatch-down"></span> Caída atípica</span>
+      <span class="legend-item"><span class="swatch swatch-up"></span> Subida atípica</span>
+    </div>
+  </div>
+
+  <div class="matrix-wrap">
+    <table class="matrix-table">
+      <thead><tr id="matrixHead"></tr></thead>
+      <tbody id="matrixBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-note" id="matrixEmpty" style="display:none;">Ningún cliente coincide con la búsqueda.</div>
+
+  <div class="footnote">
+    <strong>Cómo leer la matriz:</strong> cada celda es lo facturado (Holded, España, neto en €) por ese cliente ese mes. Se colorean con los mismos criterios que la <a href="revision.html">vista de revisión</a>: <strong>rojo</strong> = dejó de facturar (tenía &gt;50€ en los 3 meses anteriores y nada este mes); <strong>ámbar</strong> = caída atípica (−50% o más vs. su media de los 3 meses anteriores); <strong>verde</strong> = subida atípica (+50% o más). Las celdas sin color de los primeros meses son porque aún no hay 3 meses anteriores con los que comparar. Un aviso ya marcado como revisado en la otra vista aparece atenuado aquí. Esta vista es solo de lectura — para marcar avisos como revisados, usa <a href="revision.html">Revisión de clientes</a>.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/matriz.js"></script>
+</body>
+</html>
