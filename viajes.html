@@ -152,8 +152,10 @@
       <table>
         <thead><tr>
           <th style="text-align:left;">Cliente</th>
+          <th style="text-align:left;">Tipo</th>
           <th style="text-align:left;">Meses atribuidos</th>
           <th>Ingreso (Holded)</th>
+          <th style="text-align:left;">vs. 3 meses antes</th>
           <th></th>
         </tr></thead>
         <tbody id="clientsBody"></tbody>
@@ -171,6 +173,12 @@
         </div>
         <div class="field"><label for="attrStart">Desde (mes)</label><input type="month" id="attrStart"></div>
         <div class="field"><label for="attrEnd">Hasta (mes)</label><input type="month" id="attrEnd"></div>
+        <div class="field"><label>Tipo</label>
+          <div class="seg" id="clientTypeSeg">
+            <button data-type="nuevo" aria-pressed="true" type="button">Cliente nuevo</button>
+            <button data-type="antiguo" aria-pressed="false" type="button">Visita cliente antiguo</button>
+          </div>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn-primary" id="addClientBtn" type="button" disabled>+ Vincular cliente</button>
@@ -181,6 +189,8 @@
 
     <div class="footnote">
       <strong>Qué es esto:</strong> el <strong>coste</strong> es lo que se teclea a mano abajo (gastos del viaje). El <strong>ingreso atribuido</strong> nunca se teclea: eliges un cliente de Holded y un rango de meses, y el panel suma lo que ese cliente facturó realmente en esos meses (misma fuente que "Revisión de clientes"/"Matriz") — así el número nunca queda desactualizado. Por defecto el rango de meses sugerido es el mes del viaje, pero puedes ampliarlo si el cierre de la venta tardó más (el ingreso suele llegar después de la feria/reunión, no el mismo mes). El <strong>ROI</strong> es ingreso atribuido ÷ coste.
+      <br><br>
+      Al vincular un cliente marca si es <strong>cliente nuevo</strong> o una <strong>visita a un cliente ya existente</strong>. Solo para estos últimos se muestra la columna "vs. 3 meses antes": compara la media mensual del rango atribuido contra la media de los 3 meses naturales justo anteriores — misma fórmula que usa el aviso de "facturación atípica" en Revisión de clientes/Matriz — para ver si la visita se notó en la facturación. Si el cliente no tenía suficiente actividad previa (menos de 50€ combinados en esos 3 meses) se muestra "sin histórico previo" en vez de un porcentaje que no significaría nada.
     </div>
   </div>
 

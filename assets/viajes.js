@@ -1,7 +1,13 @@
 import { supabase, initAuth } from "./auth.js";
 import { fetchAllRows } from "./supabaseUtil.js";
+import { MIN_PRIOR_ACTIVITY } from "./clientData.js";
 
 const MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const CLIENT_TYPES = [
+  { value: "nuevo", label: "Cliente nuevo" },
+  { value: "antiguo", label: "Visita cliente antiguo" },
+];
+const CLIENT_TYPE_LABELS = Object.fromEntries(CLIENT_TYPES.map(t => [t.value, t.label]));
 const CATEGORIES = [
   { value: "vuelo", label: "Vuelo" },
   { value: "alojamiento", label: "Alojamiento" },
@@ -22,7 +28,7 @@ const STATUS_LABELS = Object.fromEntries(STATUSES.map(s => [s.value, s.label]));
 const money = (n) => n == null ? "—" : n.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const pct = (n) => n == null ? "—" : `${n.toFixed(0)}%`;
 
-const state = { view: "list", selectedTripId: null, selectedContact: null };
+const state = { view: "list", selectedTripId: null, selectedContact: null, selectedClientType: "nuevo" };
 let trips = [], expenses = [], tripClients = [], invoicedRows = [];
 let contactsList = [];
 let categoryChart = null;
@@ -90,6 +96,32 @@ function tripClientsFor(tripId) { return tripClients.filter(c => c.trip_id === t
 function tripCost(tripId) { return tripExpensesFor(tripId).reduce((s, e) => s + Number(e.amount_eur), 0); }
 function tripRevenue(tripId) { return tripClientsFor(tripId).reduce((s, c) => s + computeClientRevenue(c), 0); }
 
+function prevMonth(y, m) { return m === 1 ? [y - 1, 12] : [y, m - 1]; }
+function monthsInRange(link) {
+  return (link.attribution_end_year - link.attribution_start_year) * 12 + (link.attribution_end_month - link.attribution_start_month) + 1;
+}
+
+// For a "visita cliente antiguo" link: compares the attributed period's
+// monthly average against the average of the 3 calendar months right
+// before it -- same formula (and same MIN_PRIOR_ACTIVITY floor) as the
+// "facturación atípica" alert in Revisión de clientes / Matriz.
+function computeAntiguoValoracion(link) {
+  const contact = contactsList.find(c => c.contactId === link.contact_id);
+  if (!contact) return null;
+  let py = link.attribution_start_year, pm = link.attribution_start_month;
+  const priorAmounts = [];
+  for (let i = 0; i < 3; i++) {
+    [py, pm] = prevMonth(py, pm);
+    const v = contact.months.get(monthKey(py, pm));
+    if (v != null) priorAmounts.push(v);
+  }
+  const priorTotal = priorAmounts.reduce((a, b) => a + b, 0);
+  if (priorTotal < MIN_PRIOR_ACTIVITY) return { insufficientData: true };
+  const priorAvg = priorTotal / priorAmounts.length;
+  const windowAvg = computeClientRevenue(link) / monthsInRange(link);
+  return { insufficientData: false, priorAvg, windowAvg, delta: priorAvg ? (windowAvg - priorAvg) / priorAvg : null };
+}
+
 // ---------------- List view ----------------
 
 function renderList() {
@@ -149,6 +181,8 @@ function goToDetail(tripId) {
   document.getElementById("clientFormMsg").textContent = "";
   state.selectedContact = null;
   document.getElementById("addClientBtn").disabled = true;
+  state.selectedClientType = "nuevo";
+  document.querySelectorAll("#clientTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === "nuevo")));
 }
 
 // ---------------- Detail view ----------------
@@ -239,18 +273,33 @@ function renderCategoryChart(tripId) {
   });
 }
 
+function valoracionCell(c) {
+  if (c.client_type !== "antiguo") return `<span style="color:var(--ink-soft);">—</span>`;
+  const v = computeAntiguoValoracion(c);
+  if (!v || v.insufficientData) return `<span style="color:var(--ink-soft); font-size:12px;">sin histórico previo</span>`;
+  if (v.delta == null) return `<span style="color:var(--ink-soft); font-size:12px;">—</span>`;
+  const arrow = v.delta >= 0 ? "▲" : "▼";
+  const cls = v.delta >= 0 ? "pos" : "neg";
+  const deltaPct = (v.delta * 100);
+  return `<span class="${cls}">${arrow} ${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(0)}%</span> <span style="color:var(--ink-soft); font-size:11.5px;">(antes ${money(v.priorAvg)}/mes)</span>`;
+}
+
 function renderClientsTable(tripId) {
   const rows = tripClientsFor(tripId);
   const body = document.getElementById("clientsBody");
   document.getElementById("clientsEmpty").style.display = rows.length ? "none" : "block";
   body.innerHTML = rows.map(c => `<tr>
     <td style="text-align:left;">${escapeHtml(c.contact_name)}</td>
+    <td style="text-align:left;"><span class="status ${c.client_type}">${CLIENT_TYPE_LABELS[c.client_type] || c.client_type}</span></td>
     <td style="text-align:left;">${monthRangeLabel(c)}</td>
     <td>${money(computeClientRevenue(c))}</td>
+    <td style="text-align:left;">${valoracionCell(c)}</td>
     <td><button class="btn-icon-delete" data-link-id="${c.id}" title="Quitar">🗑</button></td>
   </tr>`).join("");
   const total = rows.reduce((s, c) => s + computeClientRevenue(c), 0);
-  document.getElementById("clientsFoot").innerHTML = `<td colspan="2" style="text-align:left;">Total</td><td>${money(total)}</td><td></td>`;
+  const nuevoCount = rows.filter(c => c.client_type === "nuevo").length;
+  const antiguoCount = rows.filter(c => c.client_type === "antiguo").length;
+  document.getElementById("clientsFoot").innerHTML = `<td colspan="3" style="text-align:left;">Total (${nuevoCount} nuevo${nuevoCount === 1 ? "" : "s"}, ${antiguoCount} antiguo${antiguoCount === 1 ? "" : "s"})</td><td>${money(total)}</td><td></td><td></td>`;
 }
 
 // ---------------- Mutations ----------------
@@ -429,6 +478,13 @@ document.addEventListener("click", (e) => {
 document.getElementById("attrStart").addEventListener("change", updateClientPreview);
 document.getElementById("attrEnd").addEventListener("change", updateClientPreview);
 
+document.getElementById("clientTypeSeg").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-type]");
+  if (!btn) return;
+  state.selectedClientType = btn.dataset.type;
+  document.querySelectorAll("#clientTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+});
+
 document.getElementById("addClientBtn").addEventListener("click", async () => {
   const msg = document.getElementById("clientFormMsg");
   if (!state.selectedContact) return;
@@ -454,6 +510,7 @@ document.getElementById("addClientBtn").addEventListener("click", async () => {
     contact_name: state.selectedContact.contactName,
     attribution_start_year: sy, attribution_start_month: sm,
     attribution_end_year: ey, attribution_end_month: em,
+    client_type: state.selectedClientType,
   }).select().single();
   if (error) {
     msg.textContent = error.code === "23505" ? "Ese cliente ya está vinculado a este viaje." : "No se pudo guardar.";
@@ -466,6 +523,8 @@ document.getElementById("addClientBtn").addEventListener("click", async () => {
   msg.textContent = "";
   document.getElementById("clientSearch").value = "";
   state.selectedContact = null;
+  state.selectedClientType = "nuevo";
+  document.querySelectorAll("#clientTypeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.type === "nuevo")));
   renderDetail(state.selectedTripId);
 });
 
