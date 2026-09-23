@@ -22,6 +22,12 @@ const GROUPS = [
       { href: "comparativa.html", label: "Objetivo vs Real" },
     ],
   },
+  {
+    label: "Viajes",
+    pages: [
+      { href: "viajes.html", label: "Viajes" },
+    ],
+  },
 ];
 
 function currentPage() {

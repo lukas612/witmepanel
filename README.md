@@ -260,6 +260,32 @@ un número inválido). Las filas de Colombia, Brasil, Affiliate y Otros
 gráfico Objetivo vs Real (ingresos o beneficio, por mes o trimestre) del
 año completo, independiente del periodo elegido para la tabla.
 
+### Viajes
+
+`viajes.html` (+ `assets/viajes.js`) es la **primera parte del panel con
+escritura desde el navegador** — hasta aquí todo era de solo lectura,
+alimentado por la sincronización semanal. El equipo (Gisel u otro account
+manager) registra aquí el gasto de cada viaje y a qué clientes se les
+atribuye ingreso, para ver si el viaje fue rentable.
+
+- `witme_trips` — el viaje: nombre/destino, fechas, responsable, estado
+  (planeado/en curso/cerrado), notas.
+- `witme_trip_expenses` — líneas de gasto (categoría, descripción, fecha,
+  quién pagó, importe en €) — esto se teclea a mano.
+- `witme_trip_clients` — qué clientes se atribuyen a un viaje y en qué
+  rango de meses (por defecto el mes del viaje, ampliable si la venta
+  tardó en cerrarse). **No guarda ningún importe**: el ingreso se suma
+  siempre en vivo desde `witme_client_invoiced_monthly` (la misma tabla
+  que usan Revisión de clientes/Matriz) para ese `contact_id` en esos
+  meses, así nunca queda un número desactualizado ni duplicado.
+
+El ROI de un viaje es ingreso atribuido ÷ coste. Las 3 tablas tienen RLS
+`for all` (no solo `for select`) para las mismas 3 cuentas del resto del
+panel — cualquiera de las tres puede crear, editar o borrar, sin control
+de "solo puedes tocar lo tuyo" (mantenido simple a propósito; se puede
+endurecer si hace falta). No hay sincronización semanal para estas tablas
+porque el dato nace aquí, no en una hoja externa.
+
 ### Actualizar o ampliar los datos
 
 Añade filas a `witme_pnl_monthly` (o edita las existentes) con una nueva
