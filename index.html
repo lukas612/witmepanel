@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Witme — Control de resultados</title>
+<title>Witme — Resumen ejecutivo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@
   <header>
     <div class="brand">
       <span class="mark">WITME · CONTROL DE RESULTADOS</span>
-      <h1>Ingresos, costes y beneficio Generado</h1>
-      <span class="sub">España &amp; Panamá — comparativa mensual</span>
+      <h1>Resumen ejecutivo</h1>
+      <span class="sub">Estado operativo, y beneficio Generado, España &amp; Panamá</span>
     </div>
     <div>
       <nav class="page-menu-bar" id="pageMenuBar"></nav>
@@ -57,7 +57,10 @@
     </div>
   </header>
 
+  <div class="ops-alerts" id="opsAlerts"></div>
+
   <div class="kpis" id="kpiStrip"></div>
+  <div class="kpis" id="kpiStrip2" style="display:none;"></div>
   <div class="disabled-note" id="regionDisabledNote" style="display:none;"></div>
   <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
 
@@ -76,6 +79,8 @@
   </div>
 
   <div class="footnote">
+    <strong>Estado operativo:</strong> la franja de arriba resume 3 señales que viven en otras páginas — clientes con aviso sin revisar (Matriz), facturas vencidas hace más de 30 días (Impagados) y el cumplimiento del objetivo del mes (Objetivo vs Real) — para no tener que visitarlas una a una. Haz clic en cualquier tarjeta para ir al detalle.
+    <br><br>
     <strong>Notas de datos:</strong> el desglose por país (España / Panamá) solo existe en la hoja para 2026 — 2025 se muestra siempre como total combinado.
     Los ingresos de Panamá venían en la hoja de origen en <strong>USD</strong> y se han convertido a EUR con tipos de cambio medios mensuales publicados (BCE / Bank of England) — es una aproximación razonable, no una conversión contable exacta.
     Los ingresos de España mostrados son <strong>implícitos</strong> (total combinado − Panamá convertido), ya que la hoja no reporta ingresos de España por separado.

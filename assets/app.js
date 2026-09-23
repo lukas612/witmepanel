@@ -1,28 +1,129 @@
 import { supabase, initAuth } from "./auth.js";
+import { fetchAllRows } from "./supabaseUtil.js";
+import { fetchClientData, buildIndex, computeReviewableMonths, computeAlerts } from "./clientData.js";
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MONTHS_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 const state = { year: 2026, region: "total", view: "region" };
 let chart = null;
 const yearCache = {};
+let opsAlertsCache = null;
 
 const eur = n => n==null ? "—" : n.toLocaleString("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0});
 const pct = n => n==null ? "—" : n.toLocaleString("es-ES",{maximumFractionDigits:1,minimumFractionDigits:1}) + "%";
+const pct0 = n => n==null ? "—" : `${n.toFixed(0)}%`;
 
 initAuth(renderAll);
+
+// ---------------- Estado operativo (cross-page alerts) ----------------
+
+async function loadOpsAlerts() {
+  if (opsAlertsCache) return opsAlertsCache;
+  const [clientAlerts, overdue, cumplimiento] = await Promise.all([
+    loadClientAlerts().catch(() => null),
+    loadOverdue().catch(() => null),
+    loadCumplimiento().catch(() => null),
+  ]);
+  opsAlertsCache = { clientAlerts, overdue, cumplimiento };
+  return opsAlertsCache;
+}
+
+async function loadClientAlerts() {
+  const data = await fetchClientData(supabase);
+  const idx = buildIndex(data.rows);
+  const reviewableMonths = computeReviewableMonths(idx.months);
+  if (!reviewableMonths.length) return null;
+  const [year, month] = reviewableMonths[reviewableMonths.length - 1].split("-").map(Number);
+  const { missing, deviations } = computeAlerts(idx.byClient, year, month);
+  const reviewedMissing = new Set(data.reviews.filter(r => r.alert_type === "missing" && r.year === year && r.month === month).map(r => r.contact_id));
+  const reviewedDeviation = new Set(data.reviews.filter(r => r.alert_type === "deviation" && r.year === year && r.month === month).map(r => r.contact_id));
+  const unreviewedMissing = missing.filter(m => !reviewedMissing.has(m.contactId)).length;
+  const unreviewedDeviation = deviations.filter(d => !reviewedDeviation.has(d.contactId)).length;
+  return { year, month, unreviewedMissing, unreviewedDeviation, total: unreviewedMissing + unreviewedDeviation };
+}
+
+async function loadOverdue() {
+  const rows = await fetchAllRows(supabase, "witme_unpaid_invoices");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let totalEur = 0, overdueEur = 0, count30 = 0;
+  for (const r of rows) {
+    totalEur += Number(r.pending_eur);
+    if (!r.due_date) continue;
+    const due = new Date(r.due_date + "T00:00:00");
+    const days = Math.round((today - due) / 86400000);
+    if (days > 30) { count30++; overdueEur += Number(r.pending_eur); }
+  }
+  return { totalEur, overdueEur, count30 };
+}
+
+async function loadCumplimiento() {
+  const [{ data: targets, error: tErr }, { data: results, error: rErr }] = await Promise.all([
+    supabase.from("witme_targets_monthly").select("*"),
+    supabase.from("witme_results_monthly").select("*"),
+  ]);
+  if (tErr) throw tErr;
+  if (rErr) throw rErr;
+  if (!results.length) return null;
+  const month = Math.max(...results.map(r => r.month));
+  const sum = (rows, field) => rows.filter(r => r.month === month && r.vertical === "").reduce((s, r) => s + (r[field] || 0), 0);
+  const objRevenue = sum(targets, "revenue"), realRevenue = sum(results, "revenue");
+  const objProfit = sum(targets, "profit"), realProfit = sum(results, "profit");
+  return {
+    month,
+    pctRevenue: objRevenue ? (realRevenue / objRevenue * 100) : null,
+    pctProfit: objProfit ? (realProfit / objProfit * 100) : null,
+  };
+}
+
+function renderOpsAlerts({ clientAlerts, overdue, cumplimiento }) {
+  const el = document.getElementById("opsAlerts");
+  if (!el) return;
+
+  const clientCard = clientAlerts
+    ? `<a class="ops-card ${clientAlerts.total ? "neg" : "pos"}" href="matriz.html">
+        <div class="ops-label">CLIENTES CON AVISO</div>
+        <div class="ops-value">${clientAlerts.total}</div>
+        <div class="ops-foot">${clientAlerts.unreviewedMissing} dejaron de facturar · ${clientAlerts.unreviewedDeviation} atípicos, sin revisar — ${MONTHS_FULL[clientAlerts.month - 1]}</div>
+      </a>`
+    : `<div class="ops-card"><div class="ops-label">CLIENTES CON AVISO</div><div class="ops-value">—</div><div class="ops-foot">datos insuficientes todavía</div></div>`;
+
+  const overdueCard = overdue
+    ? `<a class="ops-card ${overdue.count30 ? "neg" : "pos"}" href="impagados.html">
+        <div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div>
+        <div class="ops-value">${overdue.count30}</div>
+        <div class="ops-foot">${eur(overdue.overdueEur)} de ${eur(overdue.totalEur)} pendiente total</div>
+      </a>`
+    : `<div class="ops-card"><div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`;
+
+  const cumplBad = cumplimiento && ((cumplimiento.pctRevenue != null && cumplimiento.pctRevenue < 100) || (cumplimiento.pctProfit != null && cumplimiento.pctProfit < 100));
+  const cumplCard = cumplimiento
+    ? `<a class="ops-card ${cumplBad ? "neg" : "pos"}" href="comparativa.html">
+        <div class="ops-label">CUMPLIMIENTO OBJETIVO — ${MONTHS_FULL[cumplimiento.month - 1].toUpperCase()}</div>
+        <div class="ops-value">${pct0(cumplimiento.pctRevenue)} ing. · ${pct0(cumplimiento.pctProfit)} benef.</div>
+        <div class="ops-foot">real (operativo) vs objetivo del mes</div>
+      </a>`
+    : `<div class="ops-card"><div class="ops-label">CUMPLIMIENTO OBJETIVO</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`;
+
+  el.innerHTML = clientCard + overdueCard + cumplCard;
+}
 
 // ---------------- Data ----------------
 async function fetchYear(year) {
   if (yearCache[year]) return yearCache[year];
 
-  const [{ data: cfg, error: cfgErr }, { data: rows, error: rowsErr }] = await Promise.all([
+  const [{ data: cfg, error: cfgErr }, { data: rows, error: rowsErr }, { data: invRows, error: invErr }] = await Promise.all([
     supabase.from("witme_year_config").select("*").eq("year", year).single(),
-    supabase.from("witme_pnl_monthly").select("*").eq("year", year)
+    supabase.from("witme_pnl_monthly").select("*").eq("year", year),
+    supabase.from("witme_invoiced_monthly").select("*").eq("year", year)
   ]);
   if (cfgErr) throw cfgErr;
   if (rowsErr) throw rowsErr;
+  if (invErr) throw invErr;
 
-  const yearData = { hasSplit: cfg.has_split, visibleMonths: cfg.visible_months };
+  const yearData = { hasSplit: cfg.has_split, visibleMonths: cfg.visible_months, invoicedByMonth: new Array(12).fill(0) };
+  invRows.forEach(r => { yearData.invoicedByMonth[r.month - 1] += Number(r.invoiced_eur); });
   for (const region of ["total", "espana", "panama"]) {
     const regionRows = rows.filter(r => r.region === region);
     if (regionRows.length === 0) continue;
@@ -78,14 +179,16 @@ function renderFilters(yearData) {
   document.getElementById("yearSeg").style.display = yearIrrelevant ? "none" : "flex";
   document.getElementById("regionSeg").style.display = regionIrrelevant ? "none" : "flex";
   document.getElementById("regionNote").classList.toggle("show", !split && !regionIrrelevant);
+  document.getElementById("kpiStrip2").style.display = "none";
 }
 
 function regionLabel(region) {
   return region === "total" ? "Total" : (region === "espana" ? "España" : "Panamá");
 }
 
-function renderKPIs(s) {
+function renderKPIs(s, yearData) {
   const strip = document.getElementById("kpiStrip");
+  const strip2 = document.getElementById("kpiStrip2");
   const disabledNote = document.getElementById("regionDisabledNote");
 
   const realIdx = s.real.map((r, i) => r ? i : -1).filter(i => i >= 0);
@@ -102,8 +205,17 @@ function renderKPIs(s) {
       <div class="kpi"><div class="label">BENEFICIO</div><div class="value ${profit<0?'neg':'pos'}">${eur(profit)}</div><div class="foot">${state.year}</div></div>
       <div class="kpi"><div class="label">MARGEN</div><div class="value ${margin<0?'neg':'pos'}">${pct(margin)}</div><div class="foot">sobre ingresos reales</div></div>
     `;
+
+    const invoicedEur = realIdx.reduce((a, i) => a + (yearData.invoicedByMonth[i] || 0), 0);
+    const negMonths = realIdx.filter(i => (s.revenue[i] - s.cost[i]) < 0).length;
+    strip2.style.display = "grid";
+    strip2.innerHTML = `
+      <div class="kpi"><div class="label">FACTURADO (HOLDED, España)</div><div class="value">${eur(invoicedEur)}</div><div class="foot">sin IVA, mismos meses</div></div>
+      <div class="kpi"><div class="label">MESES EN NEGATIVO</div><div class="value ${negMonths>0?'neg':'pos'}">${negMonths}</div><div class="foot">de ${realIdx.length} meses reales</div></div>
+    `;
   } else {
     strip.style.display = "none";
+    strip2.style.display = "none";
     disabledNote.style.display = "block";
     const cost = sum(s.cost);
     const label = state.region === "espana" ? "España" : "Panamá";
@@ -355,7 +467,7 @@ async function renderAll() {
         renderCumulative(yearData);
       } else {
         const s = getSeries(yearData);
-        renderKPIs(s);
+        renderKPIs(s, yearData);
         renderChart(s);
         renderTable(s);
       }
@@ -366,6 +478,7 @@ async function renderAll() {
     loadNote.textContent = "No se pudieron cargar los datos. Puede que tu cuenta no tenga acceso a este panel — contacta al administrador.";
     loadNote.style.color = "var(--neg)";
   }
+  loadOpsAlerts().then(renderOpsAlerts).catch(err => console.error("ops alerts:", err));
 }
 
 document.getElementById("yearSeg").addEventListener("click", (e) => {

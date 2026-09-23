@@ -194,6 +194,29 @@ h1{
   .kpi:nth-child(2){ border-right:none; }
 }
 
+#kpiStrip2{ grid-template-columns:repeat(2,1fr); margin-top:0; }
+
+/* ---------- estado operativo (home alerts) ---------- */
+.ops-alerts{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:24px 0 8px; }
+.ops-card{
+  display:block; padding:16px 18px; border:1px solid var(--line); border-radius:8px;
+  background:var(--surface); text-decoration:none; color:inherit;
+  transition:border-color .12s, transform .12s;
+}
+a.ops-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
+.ops-card.neg{ border-color:var(--neg); background:var(--neg-soft); }
+.ops-label{
+  font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:.03em;
+  color:var(--ink-soft); margin-bottom:8px;
+}
+.ops-value{ font-family:"Space Grotesk", sans-serif; font-weight:600; font-size:22px; color:var(--ink); }
+.ops-card.neg .ops-value{ color:var(--neg); }
+.ops-card.pos .ops-value{ color:var(--accent); }
+.ops-foot{ font-size:12px; color:var(--ink-soft); margin-top:6px; }
+@media (max-width:720px){
+  .ops-alerts{ grid-template-columns:1fr; }
+}
+
 .disabled-note{
   font-size:13px; color:var(--ink-soft); padding:16px 4px; font-style:italic;
 }

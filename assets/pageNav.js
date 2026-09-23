@@ -1,9 +1,8 @@
 const GROUPS = [
   {
-    label: "Generado",
+    label: "Inicio",
     pages: [
-      { href: "index.html", label: "Generado (P&L)" },
-      { href: "ejecutivo.html", label: "Resumen ejecutivo" },
+      { href: "index.html", label: "Resumen ejecutivo" },
     ],
   },
   {
@@ -35,8 +34,13 @@ function initPageMenu() {
   if (!bar) return;
 
   const here = currentPage();
+
+  // A group with a single page renders as a plain link (no dropdown needed).
   bar.innerHTML = GROUPS.map((g, i) => {
     const hasActive = g.pages.some(p => p.href === here);
+    if (g.pages.length === 1) {
+      return `<a class="page-menu-btn${hasActive ? " current" : ""}" href="${g.pages[0].href}">${g.label}</a>`;
+    }
     const links = g.pages.map(p =>
       `<a class="page-link${p.href === here ? " active" : ""}" href="${p.href}">${p.label}</a>`
     ).join("");
@@ -47,10 +51,13 @@ function initPageMenu() {
       </div>`;
   }).join("");
 
-  const entries = GROUPS.map((g, i) => ({
-    btn: document.getElementById(`pageMenuBtn${i}`),
-    panel: document.getElementById(`pageMenuPanel${i}`),
-  }));
+  const entries = GROUPS
+    .map((g, i) => ({ g, i }))
+    .filter(({ g }) => g.pages.length > 1)
+    .map(({ i }) => ({
+      btn: document.getElementById(`pageMenuBtn${i}`),
+      panel: document.getElementById(`pageMenuPanel${i}`),
+    }));
 
   const closeAll = (except) => {
     entries.forEach(({ btn, panel }) => {

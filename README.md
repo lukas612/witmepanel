@@ -9,8 +9,11 @@ Sitio estático (sin build) + [Supabase](https://supabase.com) como backend
 
 ## Arquitectura
 
-- `index.html` (+ `assets/app.js`) — página principal: ingresos/costes/
-  beneficio "generados" (hojas de origen).
+- `index.html` (+ `assets/app.js`) — página principal / resumen ejecutivo:
+  franja de "estado operativo" (clientes con aviso, vencidos +30 días,
+  cumplimiento de objetivo — con enlace a su página de detalle) seguida del
+  explorador de ingresos/costes/beneficio "generados" (por región,
+  comparativa España/Panamá, interanual, acumulado).
 - `facturado.html` (+ `assets/facturado.js`) — página aparte con lo
   realmente **facturado** en Holded (ver más abajo). Sin framework, sin
   paso de build: Chart.js y `@supabase-js` se cargan por CDN.
