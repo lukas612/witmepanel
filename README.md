@@ -277,7 +277,14 @@ atribuye ingreso, para ver si el viaje fue rentable.
   tardó en cerrarse). **No guarda ningún importe**: el ingreso se suma
   siempre en vivo desde `witme_client_invoiced_monthly` (la misma tabla
   que usan Revisión de clientes/Matriz) para ese `contact_id` en esos
-  meses, así nunca queda un número desactualizado ni duplicado.
+  meses, así nunca queda un número desactualizado ni duplicado. Cada
+  vínculo lleva además un `client_type` (`nuevo` / `antiguo`): para los
+  `antiguo` (visita a un cliente ya existente) se muestra una valoración
+  que compara la media mensual del rango atribuido contra la media de
+  los 3 meses naturales justo anteriores — misma fórmula y mismo umbral
+  `MIN_PRIOR_ACTIVITY` (50€) que el aviso de "facturación atípica" en
+  Revisión de clientes/Matriz. Para `nuevo` no aplica (no hay "antes"
+  con el que comparar).
 
 El ROI de un viaje es ingreso atribuido ÷ coste. Las 3 tablas tienen RLS
 `for all` (no solo `for select`) para las mismas 3 cuentas del resto del
