@@ -1,13 +1,28 @@
-const PAGES = [
-  { href: "index.html", label: "Generado (P&L)" },
-  { href: "ejecutivo.html", label: "Resumen ejecutivo" },
-  { href: "facturado.html", label: "Facturado (Holded)" },
-  { href: "revision.html", label: "Revisión de clientes" },
-  { href: "matriz.html", label: "Matriz de clientes" },
-  { href: "impagados.html", label: "Impagados" },
-  { href: "objetivos.html", label: "Objetivos" },
-  { href: "resultados.html", label: "Resultados" },
-  { href: "comparativa.html", label: "Objetivo vs Real" },
+const GROUPS = [
+  {
+    label: "Generado",
+    pages: [
+      { href: "index.html", label: "Generado (P&L)" },
+      { href: "ejecutivo.html", label: "Resumen ejecutivo" },
+    ],
+  },
+  {
+    label: "Facturación",
+    pages: [
+      { href: "facturado.html", label: "Facturado (Holded)" },
+      { href: "revision.html", label: "Revisión de clientes" },
+      { href: "matriz.html", label: "Matriz de clientes" },
+      { href: "impagados.html", label: "Impagados" },
+    ],
+  },
+  {
+    label: "Objetivos",
+    pages: [
+      { href: "objetivos.html", label: "Objetivos" },
+      { href: "resultados.html", label: "Resultados" },
+      { href: "comparativa.html", label: "Objetivo vs Real" },
+    ],
+  },
 ];
 
 function currentPage() {
@@ -16,27 +31,52 @@ function currentPage() {
 }
 
 function initPageMenu() {
-  const btn = document.getElementById("pageMenuBtn");
-  const panel = document.getElementById("pageMenuPanel");
-  if (!btn || !panel) return;
+  const bar = document.getElementById("pageMenuBar");
+  if (!bar) return;
 
   const here = currentPage();
-  panel.innerHTML = PAGES.map(p =>
-    `<a class="page-link${p.href === here ? " active" : ""}" href="${p.href}">${p.label}</a>`
-  ).join("");
+  bar.innerHTML = GROUPS.map((g, i) => {
+    const hasActive = g.pages.some(p => p.href === here);
+    const links = g.pages.map(p =>
+      `<a class="page-link${p.href === here ? " active" : ""}" href="${p.href}">${p.label}</a>`
+    ).join("");
+    return `
+      <div class="page-menu-group">
+        <button class="page-menu-btn${hasActive ? " current" : ""}" id="pageMenuBtn${i}" type="button" aria-haspopup="true" aria-expanded="false">${g.label} ▾</button>
+        <nav class="page-menu-panel" id="pageMenuPanel${i}" hidden>${links}</nav>
+      </div>`;
+  }).join("");
 
-  const close = () => { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); };
-  const open = () => { panel.hidden = false; btn.setAttribute("aria-expanded", "true"); };
+  const entries = GROUPS.map((g, i) => ({
+    btn: document.getElementById(`pageMenuBtn${i}`),
+    panel: document.getElementById(`pageMenuPanel${i}`),
+  }));
 
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (panel.hidden) open(); else close();
+  const closeAll = (except) => {
+    entries.forEach(({ btn, panel }) => {
+      if (panel === except) return;
+      panel.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+    });
+  };
+
+  entries.forEach(({ btn, panel }) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasHidden = panel.hidden;
+      closeAll();
+      if (wasHidden) {
+        panel.hidden = false;
+        btn.setAttribute("aria-expanded", "true");
+      }
+    });
   });
   document.addEventListener("click", (e) => {
-    if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) close();
+    const insideAny = entries.some(({ btn, panel }) => panel.contains(e.target) || e.target === btn);
+    if (!insideAny) closeAll();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") close();
+    if (e.key === "Escape") closeAll();
   });
 }
 
