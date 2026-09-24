@@ -287,11 +287,28 @@ atribuye ingreso, para ver si el viaje fue rentable.
   con el que comparar).
 
 El ROI de un viaje es ingreso atribuido ÷ coste. Las 3 tablas tienen RLS
-`for all` (no solo `for select`) para las mismas 3 cuentas del resto del
-panel — cualquiera de las tres puede crear, editar o borrar, sin control
+`for all` (no solo `for select`) para las mismas cuentas del resto del
+panel — cualquiera de ellas puede crear, editar o borrar, sin control
 de "solo puedes tocar lo tuyo" (mantenido simple a propósito; se puede
 endurecer si hace falta). No hay sincronización semanal para estas tablas
 porque el dato nace aquí, no en una hoja externa.
+
+### Estado de los datos
+
+`estado.html` (+ `assets/estado.js`) es un registro **de solo lectura**:
+por cada fuente (Facturado, Comprado, Revisión de clientes, Impagados,
+Objetivos, Resultados) muestra cuándo se actualizó por última vez y hasta
+qué mes llegan los datos cargados (`witme_data_sources`, campos
+`last_updated_at` y `covers_until_year`/`covers_until_month`, más un
+`target_note` libre para anotar algo como "falta cargar Q4"). No hay
+ningún botón que dispare una sincronización — de momento es solo un
+registro manual: cuando se carga una sincronización real de verdad (nueva
+migración con datos de Holded, o una hoja de Objetivos/Resultados), hay
+que actualizar la fila correspondiente a mano (`update witme_data_sources
+set last_updated_at = now(), covers_until_year = ..., covers_until_month =
+... where key = '...'`). `impagados` no lleva "cubre hasta" porque es una
+foto del momento (se sustituye entera en cada sincronización), no una
+serie mensual.
 
 ### Actualizar o ampliar los datos
 

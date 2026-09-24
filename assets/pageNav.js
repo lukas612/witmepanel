@@ -28,6 +28,12 @@ const GROUPS = [
       { href: "viajes.html", label: "Viajes" },
     ],
   },
+  {
+    label: "Estado",
+    pages: [
+      { href: "estado.html", label: "Estado de los datos" },
+    ],
+  },
 ];
 
 function currentPage() {

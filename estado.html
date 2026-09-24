@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Estado de los datos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Estado de los datos</h1>
+      <span class="sub">Cuándo se actualizó cada fuente por última vez y hasta qué mes llega</span>
+    </div>
+    <div>
+      <nav class="page-menu-bar" id="pageMenuBar"></nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="ledger">
+    <table>
+      <thead><tr>
+        <th style="text-align:left;">Fuente</th>
+        <th style="text-align:left;">Última actualización</th>
+        <th style="text-align:left;">Cubre hasta</th>
+        <th style="text-align:left;">Notas</th>
+      </tr></thead>
+      <tbody id="sourcesBody"></tbody>
+    </table>
+    <div class="empty-note" id="sourcesEmpty" style="display:none;">Sin registros todavía.</div>
+  </div>
+
+  <div class="footnote">
+    <strong>Qué es esto:</strong> un registro manual de cuándo se sincronizó por última vez cada fuente de datos con Holded (o se cargó desde hojas, para Objetivos/Resultados) y hasta qué mes llegan los datos cargados. No hay ningún botón que dispare la sincronización desde aquí — sigue haciéndose aparte — esto es solo para ver de un vistazo si algo se ha quedado desactualizado. <strong>Impagados</strong> no tiene "cubre hasta" porque es una foto del momento (se sustituye entera en cada sincronización), no una serie mensual.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/estado.js"></script>
+</body>
+</html>
