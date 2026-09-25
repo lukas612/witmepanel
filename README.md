@@ -173,21 +173,28 @@ autentica con una cookie de sesión de Laravel detrás de un login con
 CAPTCHA — no existe ningún token de API duradero que se pueda guardar en
 Vault y reutilizar como el de Holded.
 
-Para forzar un re-pull a mano: inicia sesión en
-`https://factura.ebi-pac.com/invoices`, abre DevTools → Network, recarga
-la tabla, copia el header `Cookie` de esa petición (clic derecho → Copy →
-Copy as cURL es lo más fácil), y pásaselo a
-`scripts/ebipac_pull_panama.js`:
+**`panama.html`** (+ `assets/panama.js`) es la forma normal de forzar un
+re-pull: trae los mismos pasos (login en el portal → DevTools → Network →
+copiar la petición `invoices/list` como cURL) como instrucciones en la
+propia página, con un textarea donde pegar la cookie/cURL y un botón
+**Actualizar**. Ese botón llama a la Edge Function
+`supabase/functions/ebipac-panama-sync`, que hace el trabajo real
+(paginar todo el listado, agregar por mes, y escribir en
+`witme_panama_invoiced_monthly` + `witme_data_sources`) — la cookie viaja
+solo en esa petición y no se guarda en ningún sitio. La función comprueba
+que quien llama es una de las cuentas del equipo (mismo email allowlist
+que el resto de RLS) antes de hacer nada, porque a diferencia del cron de
+Holded, este endpoint sí es alcanzable desde una página pública.
 
-```bash
-EBIPAC_COOKIE='PHPSESSID=...; XSRF-TOKEN=...; laravel_session=...; <cookie de la app>=...' \
-  node scripts/ebipac_pull_panama.js
-```
+El navegador no puede mandar un header `Cookie` arbitrario por su cuenta
+(`fetch()` lo bloquea por seguridad) — por eso la petición real a EBI-PAC
+la hace la Edge Function, no el navegador del usuario.
 
-El script pagina todo el listado, agrega por mes y **imprime SQL listo
-para revisar y aplicar** (no escribe directamente a Supabase — no guarda
-ninguna service-role key). Las credenciales del portal y del Web Service
-están en Supabase Vault (`ebipac_portal_user`/`ebipac_portal_pass`,
+`scripts/ebipac_pull_panama.js` sigue existiendo como alternativa desde
+la terminal (pagina el listado e imprime SQL para revisar y aplicar a
+mano, sin tocar Supabase directamente) — útil para depurar sin pasar por
+la página. Las credenciales del portal y del Web Service están en
+Supabase Vault (`ebipac_portal_user`/`ebipac_portal_pass`,
 `ebipac_token_usuario`/`ebipac_token_password`) solo como referencia — no
 se usan en ningún proceso automático.
 

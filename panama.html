@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Facturado (Panamá)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Facturado (Panamá)</h1>
+      <span class="sub">Panamá — facturado real según EBI-PAC, por mes (solo ingresos, sin gastos todavía)</span>
+    </div>
+    <div>
+      <nav class="page-menu-bar" id="pageMenuBar"></nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="kpis" id="kpiStrip"></div>
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div class="ledger">
+    <div class="chart-title">FACTURADO MENSUAL (USD)</div>
+    <table>
+      <thead><tr>
+        <th style="text-align:left;">Mes</th>
+        <th>Facturado</th>
+        <th>Facturas</th>
+        <th>Notas de crédito</th>
+        <th style="text-align:left;">Última actualización</th>
+      </tr></thead>
+      <tbody id="panamaBody"></tbody>
+    </table>
+    <div class="empty-note" id="panamaEmpty" style="display:none;">Todavía no hay datos de Panamá cargados.</div>
+  </div>
+
+  <div class="form-card" style="margin-top:32px;">
+    <div class="chart-title" style="margin-bottom:14px;">ACTUALIZAR DESDE EBI-PAC</div>
+    <ol class="ebipac-steps">
+      <li>Inicia sesión en <a href="https://factura.ebi-pac.com/invoices" target="_blank" rel="noopener">factura.ebi-pac.com/invoices</a> con tu usuario del portal.</li>
+      <li>Abre las herramientas de desarrollador del navegador (F12) → pestaña <strong>Network</strong> (Red) → filtra por <strong>Fetch/XHR</strong>.</li>
+      <li>Recarga la tabla de facturas (o cambia de página) para que se dispare la petición <code>invoices/list</code>.</li>
+      <li>Haz clic derecho sobre esa petición → <strong>Copy → Copy as cURL</strong>, y pega aquí abajo el comando completo (o solo el valor del header <code>Cookie</code>).</li>
+      <li>Pulsa <strong>Actualizar</strong>. Esto no guarda la cookie en ningún sitio — se usa una vez y se descarta.</li>
+    </ol>
+    <div class="field" style="margin-top:12px;">
+      <label for="cookieInput">Cookie / cURL copiado del navegador</label>
+      <textarea id="cookieInput" rows="4" placeholder="PHPSESSID=...; XSRF-TOKEN=...; laravel_session=...;  (o pega el comando curl completo)"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" id="syncBtn" type="button">Actualizar</button>
+      <span class="form-msg" id="syncMsg"></span>
+    </div>
+  </div>
+
+  <div class="footnote">
+    <strong>Qué es esto:</strong> lo realmente facturado por la entidad de Panamá, según EBI-PAC (su proveedor autorizado de facturación electrónica) — mismo concepto que "Facturado (Holded)" para España, pero <strong>sin impuesto</strong> (estas facturas de operación extranjera no llevan ITBMS, así que el importe ya es neto) y en <strong>USD</strong>.
+    <br><br>
+    <strong>Por qué se actualiza a mano:</strong> el Web Service de EBI-PAC (pensado para integraciones) no tiene ningún método para listar o consultar facturas por fecha — solo operaciones sobre un documento ya conocido (enviar, descargar, anular…). La única forma de ver el listado es el portal web humano, protegido con CAPTCHA en el login, así que no existe ningún token de API que se pueda guardar y usar en un proceso automático diario como el de Holded. Por eso hace falta iniciar sesión a mano de vez en cuando (semanal o mensual, cuando convenga) y pegar la cookie de esa sesión aquí para forzar la actualización — el resto (paginar el listado completo, sumar por mes, guardar) lo hace el botón.
+    <br><br>
+    <strong>Solo ingresos, todavía no gastos:</strong> EBI-PAC es exclusivamente para las facturas que emite Panamá — no expone nada de sus compras/gastos. Cuando llegue esa información (por otra vía) se añadirá un "Comprado (Panamá)" aparte, igual que existe para España.
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/panama.js"></script>
+</body>
+</html>

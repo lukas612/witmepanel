@@ -9,6 +9,7 @@ const GROUPS = [
     label: "Facturación",
     pages: [
       { href: "facturado.html", label: "Facturado (Holded)" },
+      { href: "panama.html", label: "Facturado (Panamá)" },
       { href: "revision.html", label: "Revisión de clientes" },
       { href: "matriz.html", label: "Matriz de clientes" },
       { href: "impagados.html", label: "Impagados" },
