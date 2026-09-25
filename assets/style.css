@@ -212,7 +212,7 @@ h1{
 #kpiStrip2{ grid-template-columns:repeat(2,1fr); margin-top:0; }
 
 /* ---------- estado operativo (home alerts) ---------- */
-.ops-alerts{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:24px 0 8px; }
+.ops-alerts{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:24px 0 8px; }
 .ops-card{
   display:block; padding:16px 18px; border:1px solid var(--line); border-radius:8px;
   background:var(--surface); text-decoration:none; color:inherit;

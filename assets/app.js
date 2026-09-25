@@ -11,6 +11,14 @@ const yearCache = {};
 let opsAlertsCache = null;
 
 const eur = n => n==null ? "—" : n.toLocaleString("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const usd = n => n==null ? "—" : n.toLocaleString("es-ES",{style:"currency",currency:"USD",maximumFractionDigits:0});
+const daysAgo = (iso) => {
+  if (!iso) return "—";
+  const days = Math.round((Date.now() - new Date(iso)) / 86400000);
+  if (days <= 0) return "hoy";
+  if (days === 1) return "hace 1 día";
+  return `hace ${days} días`;
+};
 const pct = n => n==null ? "—" : n.toLocaleString("es-ES",{maximumFractionDigits:1,minimumFractionDigits:1}) + "%";
 const pct0 = n => n==null ? "—" : `${n.toFixed(0)}%`;
 
@@ -20,13 +28,22 @@ initAuth(renderAll);
 
 async function loadOpsAlerts() {
   if (opsAlertsCache) return opsAlertsCache;
-  const [clientAlerts, overdue, cumplimiento] = await Promise.all([
+  const [clientAlerts, overdue, cumplimiento, panama] = await Promise.all([
     loadClientAlerts().catch(() => null),
     loadOverdue().catch(() => null),
     loadCumplimiento().catch(() => null),
+    loadPanamaInvoiced().catch(() => null),
   ]);
-  opsAlertsCache = { clientAlerts, overdue, cumplimiento };
+  opsAlertsCache = { clientAlerts, overdue, cumplimiento, panama };
   return opsAlertsCache;
+}
+
+async function loadPanamaInvoiced() {
+  const rows = await fetchAllRows(supabase, "witme_panama_invoiced_monthly");
+  if (!rows.length) return null;
+  const total = rows.reduce((s, r) => s + Number(r.invoiced_total), 0);
+  const lastPulled = rows.reduce((max, r) => !max || r.last_pulled_at > max ? r.last_pulled_at : max, null);
+  return { total, lastPulled };
 }
 
 async function loadClientAlerts() {
@@ -77,7 +94,7 @@ async function loadCumplimiento() {
   };
 }
 
-function renderOpsAlerts({ clientAlerts, overdue, cumplimiento }) {
+function renderOpsAlerts({ clientAlerts, overdue, cumplimiento, panama }) {
   const el = document.getElementById("opsAlerts");
   if (!el) return;
 
@@ -106,7 +123,15 @@ function renderOpsAlerts({ clientAlerts, overdue, cumplimiento }) {
       </a>`
     : `<div class="ops-card"><div class="ops-label">CUMPLIMIENTO OBJETIVO</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`;
 
-  el.innerHTML = clientCard + overdueCard + cumplCard;
+  const panamaCard = panama
+    ? `<a class="ops-card" href="panama.html">
+        <div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div>
+        <div class="ops-value">${usd(panama.total)}</div>
+        <div class="ops-foot">actualizado ${daysAgo(panama.lastPulled)} — sin tax/ITBMS</div>
+      </a>`
+    : `<div class="ops-card"><div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div><div class="ops-value">—</div><div class="ops-foot">sin datos todavía</div></div>`;
+
+  el.innerHTML = clientCard + overdueCard + cumplCard + panamaCard;
 }
 
 // ---------------- Data ----------------
