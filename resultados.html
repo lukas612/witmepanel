@@ -56,7 +56,12 @@
     </table>
   </div>
 
-  <div class="chart-block">
+  <div class="seg" id="chartTabSeg" style="margin-top:32px;">
+    <button data-tab="total" aria-pressed="true">Total 2026</button>
+    <button data-tab="brand" aria-pressed="false">Evolución por marca</button>
+  </div>
+
+  <div class="chart-block" id="totalChartBlock">
     <div class="chart-title" id="chartTitle">RESULTADO REAL POR MES (€) — 2026</div>
     <div class="seg" id="chartGranSeg" style="margin-bottom:14px;">
       <button data-gran="month" aria-pressed="true">Por mes</button>
@@ -65,12 +70,26 @@
     <div class="chart-box"><canvas id="resultsChart"></canvas></div>
   </div>
 
+  <div class="chart-block" id="brandChartBlock" style="display:none;">
+    <div class="chart-title">EVOLUCIÓN MENSUAL POR MARCA</div>
+    <div class="matrix-controls" style="margin-bottom:14px;">
+      <div class="seg" id="brandMarketSeg"></div>
+      <div class="seg" id="brandMetricSeg">
+        <button data-metric="profit" aria-pressed="true">Beneficio</button>
+        <button data-metric="revenue" aria-pressed="false">Ingresos</button>
+      </div>
+    </div>
+    <div class="chart-box"><canvas id="brandChart"></canvas></div>
+  </div>
+
   <div class="footnote">
     <strong>Qué es esto:</strong> el beneficio <strong>operativo</strong> real, tal y como lo registra el equipo de tráfico cada semana en su hoja de resultados: ingresos menos la inversión publicitaria y las herramientas directamente ligadas a esa venta (SMS, email…). <strong>No incluye nóminas ni el resto de gastos fijos de la empresa</strong> — para el beneficio real de la empresa está el panel "Generado". Por eso mismo esta cifra no es directamente comparable a "Comprado" del panel "Facturado (Holded)" ni al "Generado" — tienen alcances distintos a propósito.
     <br><br>
     Además de los mercados de <strong>Objetivos</strong> (España, Portugal, Italia, Rumania, Polonia, Alemania, México), aquí aparecen <strong>Colombia</strong> y <strong>Brasil</strong> (mercados nuevos, sin objetivo cargado todavía), <strong>Affiliate</strong> (Everflow, Api-partners) y un bloque <strong>Otros</strong> que agrupa líneas sueltas (un acuerdo de medios, el coste de alguna herramienta) para que el total de esta página cuadre con el total real de la hoja. Las columnas <strong>% obj. profit</strong> y <strong>% obj. facturación</strong> son el cumplimiento que ya calcula la propia hoja contra el objetivo de ese mes — solo se muestran viendo un mes suelto (sumarlas o promediarlas en un trimestre/año no sería correcto). El gráfico de abajo siempre muestra el año completo (todos los mercados), independientemente del periodo elegido arriba.
     <br><br>
     <strong>Por ahora esto no se compara automáticamente</strong> contra "Objetivos" — es solo el resultado real, mes a mes. Comparar objetivo vs. real de verdad (y quizás sustituir la hoja de Excel por introducir los datos aquí directamente) es un paso pendiente, no construido todavía.
+    <br><br>
+    <strong>Evolución por marca:</strong> elige un mercado y ve cómo evoluciona cada marca dentro de él, mes a mes (Beneficio o Ingresos). "Otros" no aparece aquí porque sus líneas son gastos/ingresos sueltos, no marcas reales.
   </div>
 
 </div>

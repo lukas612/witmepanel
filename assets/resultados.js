@@ -10,9 +10,10 @@ const pct = (n) => n == null ? "—" : `${n.toFixed(1)}%`;
 const QUARTERS = { q1: [1, 2, 3], q2: [4, 5, 6], q3: [7, 8, 9] };
 const QUARTER_LABELS = { q1: "Q1", q2: "Q2", q3: "Q3" };
 
-const state = { month: null, chartGran: "month" }; // month: 1-9, "q1"/"q2"/"q3", or "year"
+const state = { month: null, chartGran: "month", chartTab: "total", brandMarket: null, brandMetric: "profit" }; // month: 1-9, "q1"/"q2"/"q3", or "year"
 let rows = null;
 let chart = null;
+let brandChart = null;
 
 initAuth(renderAll);
 
@@ -287,6 +288,93 @@ function drawChart(labels, revenue, cost, profit) {
   });
 }
 
+// Markets that have real brand/vertical breakdowns (excludes "Otros", whose
+// "verticals" are one-off cost/revenue lines, not brands).
+function marketsWithBrands() {
+  const set = new Set();
+  for (const r of rows) {
+    if (r.vertical !== "" && r.market !== "Otros") set.add(r.market);
+  }
+  return [...set].sort((a, b) => marketSortKey(a) - marketSortKey(b));
+}
+
+function renderBrandMarketSeg() {
+  const seg = document.getElementById("brandMarketSeg");
+  const markets = marketsWithBrands();
+  if (state.brandMarket == null || !markets.includes(state.brandMarket)) {
+    state.brandMarket = markets[0] ?? null;
+  }
+  seg.innerHTML = markets.map(m => `<button data-market="${escapeHtml(m)}" aria-pressed="${m === state.brandMarket}">${escapeHtml(m)}</button>`).join("");
+  seg.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      state.brandMarket = b.dataset.market;
+      seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      renderBrandChart();
+    });
+  });
+}
+
+function renderBrandChart() {
+  const box = document.getElementById("brandChart").parentElement;
+  if (typeof Chart === "undefined") {
+    box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js).</div>';
+    return;
+  }
+  if (!state.brandMarket) return;
+
+  const metricField = state.brandMetric; // "profit" | "revenue"
+  const verticals = [...new Set(
+    rows.filter(r => r.market === state.brandMarket && r.vertical !== "").map(r => r.vertical)
+  )].sort((a, b) => verticalSortKey(a) - verticalSortKey(b));
+
+  const months = [...new Set(rows.filter(r => r.market === state.brandMarket).map(r => r.month))].sort((a, b) => a - b);
+  const labels = months.map(m => MONTHS[m - 1]);
+
+  const seriesColors = ["--series-1", "--series-2", "--series-3", "--series-4", "--series-5"];
+  const colorFor = (i) => getComputedStyle(document.body).getPropertyValue(seriesColors[i % seriesColors.length]).trim();
+
+  const datasets = verticals.map((vertical, i) => {
+    const byMonth = new Map();
+    for (const r of rows) {
+      if (r.market === state.brandMarket && r.vertical === vertical) byMonth.set(r.month, r[metricField] || 0);
+    }
+    const color = colorFor(i);
+    return {
+      label: vertical,
+      data: months.map(m => byMonth.get(m) ?? null),
+      borderColor: color,
+      backgroundColor: color,
+      pointBackgroundColor: color,
+      pointRadius: 3,
+      borderWidth: 2,
+      tension: .25,
+      spanGaps: true,
+    };
+  });
+
+  const ctx = document.getElementById("brandChart").getContext("2d");
+  const gridColor = getComputedStyle(document.body).getPropertyValue("--line").trim();
+  const inkSoft = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
+
+  if (brandChart) brandChart.destroy();
+  brandChart = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top", align: "end", labels: { color: inkSoft, boxWidth: 12, font: { family: "IBM Plex Mono", size: 11.5 } } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${money(c.parsed.y)}` } }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 } } },
+        y: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 }, callback: v => money(v) } }
+      }
+    }
+  });
+}
+
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
   loadNote.style.display = "block";
@@ -308,12 +396,29 @@ async function renderAll() {
     renderMonthSeg();
     render();
     renderChart();
+    renderBrandMarketSeg();
     document.getElementById("chartGranSeg").addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-gran]");
       if (!btn) return;
       state.chartGran = btn.dataset.gran;
       document.querySelectorAll("#chartGranSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
       renderChart();
+    });
+    document.getElementById("chartTabSeg").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-tab]");
+      if (!btn) return;
+      state.chartTab = btn.dataset.tab;
+      document.querySelectorAll("#chartTabSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      document.getElementById("totalChartBlock").style.display = state.chartTab === "total" ? "block" : "none";
+      document.getElementById("brandChartBlock").style.display = state.chartTab === "brand" ? "block" : "none";
+      if (state.chartTab === "brand") renderBrandChart();
+    });
+    document.getElementById("brandMetricSeg").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-metric]");
+      if (!btn) return;
+      state.brandMetric = btn.dataset.metric;
+      document.querySelectorAll("#brandMetricSeg button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      renderBrandChart();
     });
     loadNote.style.display = "none";
   } catch (err) {
