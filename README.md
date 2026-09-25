@@ -149,6 +149,48 @@ Holded (`2075-05-03`, proveedor CEDIPSA, ~76€ cada uno — probablemente
 2025) en vez de adivinar a qué mes real pertenecen; se recogerán solos en
 cuanto se corrija la fecha en Holded.
 
+### Facturado (EBI-PAC Panamá)
+
+`witme_panama_invoiced_monthly(year, month, currency, invoiced_total,
+invoice_count, credit_count, last_pulled_at)` guarda lo realmente
+facturado por la entidad de Panamá — el mismo concepto que
+`witme_invoiced_monthly` para España, pero **sin tax/ITBMS** (estas
+facturas de operación extranjera no llevan impuesto, así que
+`invoiced_total` ya es la cifra neta) y **casi siempre en USD** (moneda de
+Panamá). Primer pull real (25-sep-2026): solo hay un mes de datos —
+septiembre 2026, el primer mes que la entidad usó EBI-PAC — con 9 facturas
+menos 2 notas de crédito = 61.167,23 $.
+
+**Por qué esto es manual y no un cron diario como Holded.** El Web
+Service de EBI-PAC (pensado para integraciones) no tiene ningún método de
+listado/consulta por fecha — solo operaciones de un documento ya conocido:
+`Enviar`, `EstadoDocumento`, `Anulacion`, `DescargaXML`/`DescargaPDF`,
+`FoliosRestantes`, `EnvioCorreo`, `RastreoCorreo`, `ConsultarRucDV`
+(confirmado tanto por soporte de EBI-PAC como leyendo el manual de
+integración en `wiki.ebi-pac.com`). La única forma de listar facturas es
+el portal web humano (`factura.ebi-pac.com/invoices`), y ese portal se
+autentica con una cookie de sesión de Laravel detrás de un login con
+CAPTCHA — no existe ningún token de API duradero que se pueda guardar en
+Vault y reutilizar como el de Holded.
+
+Para forzar un re-pull a mano: inicia sesión en
+`https://factura.ebi-pac.com/invoices`, abre DevTools → Network, recarga
+la tabla, copia el header `Cookie` de esa petición (clic derecho → Copy →
+Copy as cURL es lo más fácil), y pásaselo a
+`scripts/ebipac_pull_panama.js`:
+
+```bash
+EBIPAC_COOKIE='PHPSESSID=...; XSRF-TOKEN=...; laravel_session=...; <cookie de la app>=...' \
+  node scripts/ebipac_pull_panama.js
+```
+
+El script pagina todo el listado, agrega por mes y **imprime SQL listo
+para revisar y aplicar** (no escribe directamente a Supabase — no guarda
+ninguna service-role key). Las credenciales del portal y del Web Service
+están en Supabase Vault (`ebipac_portal_user`/`ebipac_portal_pass`,
+`ebipac_token_usuario`/`ebipac_token_password`) solo como referencia — no
+se usan en ningún proceso automático.
+
 ### Revisión de clientes (Holded)
 
 `revision.html` (+ `assets/revision.js`) es una página aparte para detectar,
