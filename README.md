@@ -158,11 +158,21 @@ facturado por la entidad de Panamá — el mismo concepto que
 facturas de operación extranjera no llevan impuesto, así que
 `invoiced_total` ya es la cifra neta) y **casi siempre en USD** (moneda de
 Panamá). Historial completo cargado (25-sep-2026): 12 meses, de
-octubre 2025 a septiembre 2026 (no hay nada anterior), 261 documentos,
-1.537.169 $ en total. El primer pull solo trajo septiembre 2026 porque
-la tabla del portal aplica un filtro de fechas por defecto (ver más
-abajo) que no era evidente hasta capturar la petición real con un rango
-ampliado.
+octubre 2025 a septiembre 2026 (no hay nada anterior), 246 documentos
+contados (231 facturas + 15 notas de crédito), 1.316.637 $ en total. El
+primer pull solo trajo septiembre 2026 porque la tabla del portal aplica
+un filtro de fechas por defecto (ver más abajo) que no era evidente
+hasta capturar la petición real con un rango ampliado.
+
+**Ojo con el estado DGI.** El listado de EBI-PAC conserva documentos
+anulados (hay una acción "Anular este documento" en el portal, así que
+la anulación es un estado real y persistente) pero seguían sumándose al
+total como si fueran válidos. La agregación ahora limpia el HTML del
+campo `name` (que trae el badge de estado) y solo cuenta documentos con
+estado "Aceptado" — el resto se excluye y se reporta aparte
+(`excludedByStatus`/`excludedCount` en la respuesta de la Edge
+Function). En la carga completa había 15 documentos "Anulado" que
+antes se estaban sumando (~220.532 $ de más).
 
 **Por qué esto es manual y no un cron diario como Holded.** El Web
 Service de EBI-PAC (pensado para integraciones) no tiene ningún método de
