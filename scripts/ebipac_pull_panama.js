@@ -37,6 +37,12 @@ const COLUMNS = ["issue_date", "issue_datetime", "description", "code_cat_docume
   "identification_number_receptor", "business_name", "total_amount", "name", "subsidiary", "subsidiary_point", "actions"];
 const ORDERABLE = new Set(["issue_date", "issue_datetime", "code_cat_document_type", "document_id", "business_name", "name"]);
 
+// The portal's date-range picker feeds a per-column search value on
+// issue_datetime (column 1) -- without it, the table silently defaults to
+// a narrow recent window and hides older documents. Confirmed live: this
+// was the difference between "1 month, 11 docs" and "12 months, 261 docs".
+const DATE_RANGE = "2015-01-01 00:00:00 - 2035-12-31 23:59:00";
+
 function buildUrl(start, length) {
   const params = new URLSearchParams();
   params.set("draw", "1");
@@ -45,7 +51,7 @@ function buildUrl(start, length) {
     params.set(`columns[${i}][name]`, "");
     params.set(`columns[${i}][searchable]`, "true");
     params.set(`columns[${i}][orderable]`, String(ORDERABLE.has(c)));
-    params.set(`columns[${i}][search][value]`, "");
+    params.set(`columns[${i}][search][value]`, c === "issue_datetime" ? DATE_RANGE : "");
     params.set(`columns[${i}][search][regex]`, "false");
   });
   params.set("order[0][column]", "0");

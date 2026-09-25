@@ -157,9 +157,12 @@ facturado por la entidad de Panamá — el mismo concepto que
 `witme_invoiced_monthly` para España, pero **sin tax/ITBMS** (estas
 facturas de operación extranjera no llevan impuesto, así que
 `invoiced_total` ya es la cifra neta) y **casi siempre en USD** (moneda de
-Panamá). Primer pull real (25-sep-2026): solo hay un mes de datos —
-septiembre 2026, el primer mes que la entidad usó EBI-PAC — con 9 facturas
-menos 2 notas de crédito = 61.167,23 $.
+Panamá). Historial completo cargado (25-sep-2026): 12 meses, de
+octubre 2025 a septiembre 2026 (no hay nada anterior), 261 documentos,
+1.537.169 $ en total. El primer pull solo trajo septiembre 2026 porque
+la tabla del portal aplica un filtro de fechas por defecto (ver más
+abajo) que no era evidente hasta capturar la petición real con un rango
+ampliado.
 
 **Por qué esto es manual y no un cron diario como Holded.** El Web
 Service de EBI-PAC (pensado para integraciones) no tiene ningún método de
@@ -189,6 +192,14 @@ Holded, este endpoint sí es alcanzable desde una página pública.
 El navegador no puede mandar un header `Cookie` arbitrario por su cuenta
 (`fetch()` lo bloquea por seguridad) — por eso la petición real a EBI-PAC
 la hace la Edge Function, no el navegador del usuario.
+
+**Ojo con el filtro de fechas de la tabla.** `invoices/list` acepta un
+rango de fechas como valor de búsqueda de la columna `issue_datetime`
+(`"YYYY-MM-DD HH:MM:SS - YYYY-MM-DD HH:MM:SS"`) — sin él, el portal
+aplica un rango por defecto estrecho y esconde documentos más antiguos
+sin avisar (así fue como el primer pull solo trajo un mes). La función
+manda siempre un rango fijo amplio (2015–2035) para traer todo el
+historial real cada vez.
 
 `scripts/ebipac_pull_panama.js` sigue existiendo como alternativa desde
 la terminal (pagina el listado e imprime SQL para revisar y aplicar a
