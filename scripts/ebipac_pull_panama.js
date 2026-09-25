@@ -92,9 +92,23 @@ async function fetchAll() {
   return all;
 }
 
+// The `name` field carries the DGI status as HTML (e.g. a green "Aceptado"
+// badge). Annulled/rejected/pending documents stay in the list (there's an
+// "Anular este documento" action, so annulment is a real state here) but
+// must not be counted -- only documents DGI actually accepted are real.
+function documentStatus(row) {
+  return String(row.name || "").replace(/<[^>]*>/g, "").trim();
+}
+
 function aggregate(rows) {
   const agg = new Map();
+  const excluded = {};
   for (const r of rows) {
+    const status = documentStatus(r);
+    if (!/aceptado/i.test(status)) {
+      excluded[status || "(sin estado)"] = (excluded[status || "(sin estado)"] || 0) + 1;
+      continue;
+    }
     const isCredit = /cr[eé]dito/i.test(r.code_cat_document_type || "");
     const [dd, mm, yyyy] = r.issue_date.split("-").map(Number);
     const key = `${yyyy}-${mm}`;
@@ -104,14 +118,19 @@ function aggregate(rows) {
     if (isCredit) cur.creditCount++; else cur.invoiceCount++;
     agg.set(key, cur);
   }
-  return [...agg.values()].sort((a, b) => a.year * 100 + a.month - (b.year * 100 + b.month));
+  const monthly = [...agg.values()].sort((a, b) => a.year * 100 + a.month - (b.year * 100 + b.month));
+  return { monthly, excluded };
 }
 
 async function main() {
   const rows = await fetchAll();
-  const monthly = aggregate(rows);
+  const { monthly, excluded } = aggregate(rows);
 
+  const excludedCount = Object.values(excluded).reduce((a, b) => a + b, 0);
   console.log(`\n-- ${rows.length} documents fetched, ${monthly.length} month(s) affected.`);
+  if (excludedCount > 0) {
+    console.log(`-- ${excludedCount} document(s) excluded (not "Aceptado" by DGI): ${JSON.stringify(excluded)}`);
+  }
   console.log("-- Currency assumed USD (Panama invoices carry no tax/ITBMS on these documents).");
   console.log("-- Review before applying -- this overwrites whichever months appear below.\n");
   for (const m of monthly) {

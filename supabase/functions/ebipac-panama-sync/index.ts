@@ -93,9 +93,23 @@ async function fetchAll(cookie: string) {
 
 type Agg = { year: number; month: number; total: number; invoiceCount: number; creditCount: number };
 
-function aggregate(rows: any[]): Agg[] {
+// The `name` field carries the DGI status as HTML (e.g. a green "Aceptado"
+// badge). Annulled/rejected/pending documents stay in the list (there's an
+// "Anular este documento" action, so annulment is a real state here) but
+// must not be counted -- only documents DGI actually accepted are real.
+function documentStatus(row: any): string {
+  return String(row.name || "").replace(/<[^>]*>/g, "").trim();
+}
+
+function aggregate(rows: any[]): { monthly: Agg[]; excluded: Record<string, number> } {
   const agg = new Map<string, Agg>();
+  const excluded: Record<string, number> = {};
   for (const r of rows) {
+    const status = documentStatus(r);
+    if (!/aceptado/i.test(status)) {
+      excluded[status || "(sin estado)"] = (excluded[status || "(sin estado)"] || 0) + 1;
+      continue;
+    }
     const isCredit = /cr[eé]dito/i.test(r.code_cat_document_type || "");
     const [, mm, yyyy] = String(r.issue_date).split("-").map(Number);
     const key = `${yyyy}-${mm}`;
@@ -105,7 +119,8 @@ function aggregate(rows: any[]): Agg[] {
     if (isCredit) cur.creditCount++; else cur.invoiceCount++;
     agg.set(key, cur);
   }
-  return [...agg.values()].sort((a, b) => a.year * 100 + a.month - (b.year * 100 + b.month));
+  const monthly = [...agg.values()].sort((a, b) => a.year * 100 + a.month - (b.year * 100 + b.month));
+  return { monthly, excluded };
 }
 
 function callerEmail(req: Request): string | null {
@@ -139,7 +154,7 @@ Deno.serve(async (req) => {
     }
 
     const rows = await fetchAll(cookie);
-    const monthly = aggregate(rows);
+    const { monthly, excluded } = aggregate(rows);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -165,6 +180,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       documentsFetched: rows.length,
       monthsUpdated: monthly.map((m) => ({ year: m.year, month: m.month, total: m.total, invoiceCount: m.invoiceCount, creditCount: m.creditCount })),
+      excludedByStatus: excluded,
+      excludedCount: Object.values(excluded).reduce((a, b) => a + b, 0),
     }, null, 2), { headers: { "content-type": "application/json", ...CORS_HEADERS } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err instanceof Error ? err.message : err) }), {
