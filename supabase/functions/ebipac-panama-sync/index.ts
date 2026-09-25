@@ -20,6 +20,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_EMAILS = ["lukas@witme.es", "lukas@lukasochoa.com", "gferreyra@witme.es", "freddy@witme.es"];
 
+// This function is called directly from the browser (panama.html), so it
+// needs CORS: the preflight OPTIONS request and every real response must
+// carry these headers, or fetch() fails with an opaque "Failed to fetch"
+// before the request ever reaches this code.
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 const EBIPAC_BASE = "https://factura.ebi-pac.com";
 const PAGE_SIZE = 200;
 const MAX_ITERS = 50;
@@ -105,16 +115,20 @@ function callerEmail(req: Request): string | null {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   try {
     const email = callerEmail(req);
     if (!email || !ALLOWED_EMAILS.includes(email)) {
-      return new Response(JSON.stringify({ error: "No autorizado." }), { status: 403, headers: { "content-type": "application/json" } });
+      return new Response(JSON.stringify({ error: "No autorizado." }), { status: 403, headers: { "content-type": "application/json", ...CORS_HEADERS } });
     }
 
     const body = await req.json().catch(() => ({}));
     const cookie = body?.cookie;
     if (!cookie || typeof cookie !== "string") {
-      return new Response(JSON.stringify({ error: "Falta la cookie de sesión del portal." }), { status: 400, headers: { "content-type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Falta la cookie de sesión del portal." }), { status: 400, headers: { "content-type": "application/json", ...CORS_HEADERS } });
     }
 
     const rows = await fetchAll(cookie);
@@ -144,10 +158,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       documentsFetched: rows.length,
       monthsUpdated: monthly.map((m) => ({ year: m.year, month: m.month, total: m.total, invoiceCount: m.invoiceCount, creditCount: m.creditCount })),
-    }, null, 2), { headers: { "content-type": "application/json" } });
+    }, null, 2), { headers: { "content-type": "application/json", ...CORS_HEADERS } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err instanceof Error ? err.message : err) }), {
-      status: 500, headers: { "content-type": "application/json" },
+      status: 500, headers: { "content-type": "application/json", ...CORS_HEADERS },
     });
   }
 });
