@@ -67,6 +67,24 @@ Es una tabla intencionadamente separada de `witme_pnl_monthly`: fecha de
 factura y mes de generación casi nunca coinciden, así que no se deben
 mezclar ni promediar entre sí.
 
+**Actualización diaria automática.** La Edge Function
+`supabase/functions/holded-daily-sync` recalcula `witme_invoiced_monthly` y
+`witme_purchased_monthly` (ver más abajo) para un rango móvil de 3 meses
+(mes actual + 2 anteriores) tirando en vivo de la API de Holded — el mismo
+proceso descrito arriba, ahora automatizado. Se ejecuta sola cada día a las
+05:17 UTC vía `pg_cron`/`pg_net` (migración
+`20260924030000_witme_holded_daily_sync_cron.sql`), y también deja
+constancia en `witme_data_sources` (ver "Estado de los datos"). Los meses
+fuera de ese rango de 3 meses no se tocan — si hace falta recalcular un mes
+más antiguo (una corrección tardía en Holded, por ejemplo) sigue siendo
+manual, como antes. Para probarla a mano:
+`curl -X POST https://pnprzupnqpjqgtlqkrfd.supabase.co/functions/v1/holded-daily-sync?dry_run=true -H "Authorization: Bearer <anon key>"`
+(`dry_run=true` calcula y devuelve los totales sin escribir nada; sin ese
+parámetro, escribe de verdad). La API key de Holded se lee de Supabase
+Vault en tiempo de ejecución vía la función `public.witme_get_secret`
+(`decrypted_secrets` no es accesible directamente desde una Edge Function
+porque el esquema `vault` no está expuesto por PostgREST).
+
 El token de la API de Holded se guarda en Supabase Vault como el secreto
 `holded_api_key` (creado a mano, no viene en las migraciones). Para
 refrescar los datos:
