@@ -145,7 +145,7 @@ function renderList() {
     const cost = tripCost(t.id), revenue = tripRevenue(t.id), profit = revenue - cost;
     const roi2 = cost ? (revenue / cost * 100) : null;
     return `<tr>
-      <td style="text-align:left;">${escapeHtml(t.name)}</td>
+      <td style="text-align:left;">${escapeHtml(t.name)}${t.holded_project_id ? ' <span class="status" style="background:var(--accent-soft); color:var(--accent);" title="Proyecto de Holded, gastos sincronizados automáticamente">Holded</span>' : ""}</td>
       <td style="text-align:left;">${fmtDateRange(t.start_date, t.end_date)}</td>
       <td style="text-align:left;">${escapeHtml(t.responsable || "—")}</td>
       <td style="text-align:left;"><span class="status ${t.status}">${STATUS_LABELS[t.status] || t.status}</span></td>
@@ -228,11 +228,11 @@ function renderExpensesTable(tripId) {
   document.getElementById("expensesEmpty").style.display = rows.length ? "none" : "block";
   body.innerHTML = rows.map(e => `<tr>
     <td style="text-align:left;">${CATEGORY_LABELS[e.category] || e.category}</td>
-    <td style="text-align:left;">${escapeHtml(e.description || "—")}</td>
+    <td style="text-align:left;">${escapeHtml(e.description || "—")}${e.holded_purchase_id ? ' <span class="status" style="background:var(--accent-soft); color:var(--accent);" title="Sincronizado automáticamente desde Holded">Holded</span>' : ""}</td>
     <td style="text-align:left;">${fmtDate(e.expense_date)}</td>
     <td style="text-align:left;">${escapeHtml(e.paid_by || "—")}</td>
     <td>${money(Number(e.amount_eur))}</td>
-    <td><button class="btn-icon-delete" data-expense-id="${e.id}" title="Eliminar">🗑</button></td>
+    <td><button class="btn-icon-delete" data-expense-id="${e.id}" title="${e.holded_purchase_id ? "Eliminar (volverá a aparecer en la próxima sincronización con Holded)" : "Eliminar"}">🗑</button></td>
   </tr>`).join("");
   const total = rows.reduce((s, e) => s + Number(e.amount_eur), 0);
   document.getElementById("expensesFoot").innerHTML = `<td colspan="4" style="text-align:left;">Total</td><td>${money(total)}</td><td></td>`;

@@ -359,7 +359,20 @@ atribuye ingreso, para ver si el viaje fue rentable.
 - `witme_trips` — el viaje: nombre/destino, fechas, responsable, estado
   (planeado/en curso/cerrado), notas.
 - `witme_trip_expenses` — líneas de gasto (categoría, descripción, fecha,
-  quién pagó, importe en €) — esto se teclea a mano.
+  quién pagó, importe en €) — se teclea a mano, y desde 2026-09-29 también
+  se rellena solo: Gisel ya usa "Proyectos" en Holded para marcar un
+  proyecto por viaje/evento y etiqueta ahí las facturas de compra
+  correspondientes, así que la Edge Function `holded-trips-sync`
+  (`supabase/functions/holded-trips-sync/`, cron diario, sin IA) trae esos
+  proyectos como viajes (`holded_project_id`) y esas facturas como gastos
+  (`holded_purchase_id`/`holded_line_id`, fila marcada "Holded" en la
+  tabla) — conviven con los viajes/gastos metidos a mano sin tocarlos.
+  Importe y fecha se refrescan siempre desde Holded; categoría/descripción
+  (adivinada por palabra clave) y el resto de campos editables del viaje
+  (destino, responsable, notas, estado) solo se rellenan la primera vez y
+  luego quedan a mano del equipo -- si se borra un gasto sincronizado
+  volverá a aparecer en la siguiente sincronización mientras siga
+  etiquetado en Holded.
 - `witme_trip_clients` — qué clientes se atribuyen a un viaje y en qué
   rango de meses (por defecto el mes del viaje, ampliable si la venta
   tardó en cerrarse). **No guarda ningún importe**: el ingreso se suma
