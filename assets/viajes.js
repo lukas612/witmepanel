@@ -1,6 +1,7 @@
 import { supabase, initAuth } from "./auth.js";
 import { fetchAllRows } from "./supabaseUtil.js";
 import { MIN_PRIOR_ACTIVITY } from "./clientData.js";
+import { SUPABASE_URL } from "./config.js";
 
 const MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const CLIENT_TYPES = [
@@ -394,6 +395,34 @@ document.getElementById("createTripBtn").addEventListener("click", async () => {
   document.getElementById("newTripForm").style.display = "none";
   msg.textContent = "";
   renderList();
+});
+
+document.getElementById("syncHoldedBtn").addEventListener("click", async () => {
+  const msg = document.getElementById("syncHoldedMsg");
+  const btn = document.getElementById("syncHoldedBtn");
+  btn.disabled = true;
+  msg.textContent = "Actualizando desde Holded… puede tardar unos segundos.";
+  msg.className = "form-msg";
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/holded-trips-sync`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    const w = json.written || {};
+    msg.textContent = `Listo: ${w.tripsInserted || 0} viaje(s) nuevo(s), ${w.expInserted || 0} gasto(s) nuevo(s), ${w.expUpdated || 0} actualizado(s).`;
+    msg.className = "form-msg ok";
+    await fetchAll();
+    if (state.view === "detail") renderDetail(state.selectedTripId); else renderList();
+  } catch (err) {
+    console.error(err);
+    msg.textContent = `No se pudo actualizar: ${err.message}`;
+    msg.className = "form-msg error";
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 document.getElementById("tripsBody").addEventListener("click", (e) => {
