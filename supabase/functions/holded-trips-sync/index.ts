@@ -97,12 +97,12 @@ async function getFxRate(admin: any, year: number, month: number, currency: stri
 // freely afterwards in viajes.html and it will stick.
 function guessCategory(contactName: string, description: string): string {
   const s = `${contactName} ${description}`.toLowerCase();
-  if (/trip\.com|vuelo|flight|airlines|iberia|ryanair|vueling|air europa|easyjet/.test(s)) return "vuelo";
-  if (/hotel|apartment|hostal|booking\.com|airbnb|meli[aá]|nh hoteles|catalonia/.test(s)) return "alojamiento";
-  if (/taxi|uber|cabify|safedriver|renfe|parking|rentalcar|hertz|europcar|transporte/.test(s)) return "transporte";
-  if (/restaurante|catering|dietas|comida/.test(s)) return "dietas";
-  if (/evento|stand|feria|conference|forum|congreso/.test(s)) return "evento";
-  if (/regalo|obsequio|merchandising/.test(s)) return "regalos";
+  if (/trip\.com|kiwi\.com|vuelo|flight|airlines|iberia|ryanair|vueling|air europa|easyjet|wizz ?air|lot sa|polskie linie lotnicze|edreams/.test(s)) return "vuelo";
+  if (/hotel|apartment|hostal|booking\.com|bookings online|red universal de marketing|airbnb|meli[aá]|nh hoteles|catalonia/.test(s)) return "alojamiento";
+  if (/taxi|uber|cabify|safedriver|renfe|parking|rentalcar|hertz|europcar|transporte|aena|pkp intercity|duty free/.test(s)) return "transporte";
+  if (/restaurante|catering|dietas|comida|cafe |café|caf[eé] |bagatelle|caprabo|fogo de chao|portier eats|juan valdez|procafecol|takami|taqueria|delimex/.test(s)) return "dietas";
+  if (/evento|stand|feria|conference|forum|congreso|summit|internetcorp/.test(s)) return "evento";
+  if (/regalo|obsequio|merchandising|holeinone|hole in one/.test(s)) return "regalos";
   return "otros";
 }
 
