@@ -47,6 +47,7 @@
   <!-- ============== LIST VIEW ============== -->
   <div id="listView">
     <div class="kpis" id="kpiStrip"></div>
+    <div class="ops-alerts" id="alertsStrip"></div>
 
     <div class="chart-title">SUBIR NÓMINA O BONUS TRIMESTRAL</div>
     <div class="form-card">
@@ -98,64 +99,23 @@
       <div class="chart-box"><canvas id="trendChart"></canvas></div>
     </div>
 
-    <div class="chart-title" style="margin-top:32px; display:flex; align-items:center; gap:12px;">
-      LISTADO ANUAL POR EMPLEADO
-      <select id="annualYear" style="font-family:'IBM Plex Mono', monospace; font-size:12px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink);"></select>
-    </div>
+    <div class="chart-title" style="margin-top:32px;">MOVIMIENTOS DE PERSONAL (ALTAS / BAJAS)</div>
     <div class="ledger">
       <table>
         <thead><tr>
+          <th style="text-align:left;">Periodo</th>
+          <th style="text-align:left;">Movimiento</th>
           <th style="text-align:left;">Empleado</th>
-          <th>Nóminas</th>
-          <th>Total líquido (nómina)</th>
-          <th>Total coste (nómina)</th>
-          <th>Bonus líquido</th>
-          <th>Bonus coste</th>
-          <th>Total anual líquido</th>
-          <th>Total anual coste</th>
         </tr></thead>
-        <tbody id="annualBody"></tbody>
-        <tfoot><tr id="annualFoot"></tr></tfoot>
+        <tbody id="movementsBody"></tbody>
       </table>
-      <div class="empty-note" id="annualEmpty" style="display:none;">Sin datos para este año todavía.</div>
+      <div class="empty-note" id="movementsEmpty" style="display:none;">Sin movimientos detectados todavía (hacen falta al menos 2 nóminas consecutivas).</div>
     </div>
 
     <div class="footnote">
-      <strong>Qué es esto:</strong> cada mes (o cada trimestre, para el bonus) se sube aquí el mismo Excel resumen que envía la gestoría (Vanesa) y, si se quiere guardar también, el PDF con las nóminas individuales firmadas. El Excel se procesa en el propio navegador (no se manda a ningún sitio externo más que a guardar en este panel) y se reparte en una fila por empleado con sueldo base, incentivos, deducciones, retenciones, líquido a percibir y coste total para la empresa (el coste de Seguridad Social incluido, que es lo que de verdad cuesta cada persona más allá de lo que cobra). Los conceptos que no encajan en una columna fija (p. ej. "Prestaciones" o el lavado de ticket restaurante) se guardan igualmente sin perderse, solo que agrupados.
+      <strong>Qué es esto:</strong> cada mes (o cada trimestre, para el bonus) se sube aquí el mismo Excel resumen que envía la gestoría (Vanesa) y, si se quiere guardar también, el PDF con las nóminas individuales firmadas. El Excel se procesa en el propio navegador (no se manda a ningún sitio externo más que a guardar en este panel) y se guarda desglosado por empleado para poder calcular coste total, detectar altas/bajas y avisar de variaciones, pero <strong>a propósito no se muestra ningún importe por persona en esta pantalla</strong> — solo cifras agregadas de toda la empresa (coste total, tendencia mensual) y, en movimientos de personal, el nombre sin importe.
       <br><br>
       Esta sección solo la puede ver y editar Lukas — a diferencia del resto del panel, aquí hay sueldos, DNI y retenciones de todo el equipo, así que el acceso no sigue la lista habitual de cuentas del panel.
-    </div>
-  </div>
-
-  <!-- ============== RUN DETAIL VIEW ============== -->
-  <div id="detailView" style="display:none;">
-    <button class="btn-secondary" id="backToListBtn" type="button">← Volver al listado</button>
-
-    <div class="trip-header" id="runHeader"></div>
-
-    <div class="kpis" id="runKpiStrip"></div>
-
-    <div class="ledger" style="margin-top:20px;">
-      <table>
-        <thead><tr>
-          <th style="text-align:left;">Código</th>
-          <th style="text-align:left;">Nombre</th>
-          <th>Sueldo base</th>
-          <th>Total devengos</th>
-          <th>Total retención</th>
-          <th>Total líquido</th>
-          <th>Coste S.S. empresa</th>
-          <th>Total coste</th>
-        </tr></thead>
-        <tbody id="linesBody"></tbody>
-        <tfoot><tr id="linesFoot"></tr></tfoot>
-      </table>
-    </div>
-    <div class="footnote">
-      El nombre se reconstruye automáticamente a partir del Excel y a veces
-      sale incompleto o desordenado (el dato de origen viene truncado para
-      algunos empleados) — haz clic sobre un nombre para corregirlo a mano;
-      el cambio se guarda solo para esta fila.
     </div>
   </div>
 

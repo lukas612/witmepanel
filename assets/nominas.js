@@ -3,10 +3,13 @@ import { fetchAllRows } from "./supabaseUtil.js";
 
 const MONTH_NAMES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const RUN_TYPE_LABELS = { nomina: "Nómina", bonus: "Bonus" };
+const ANOMALY_THRESHOLD_PCT = 15;
+const MISSING_UPLOAD_GRACE_DAY = 10;
 
 const money = (n) => n == null ? "—" : Number(n).toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
 let runs = [], lines = [];
+let employeeMaster = new Map(); // employee_code -> display_name
 let trendChart = null;
 
 initAuth(renderAll);
@@ -169,6 +172,26 @@ function parseDetalle(aoa) {
   return { periodLabel, employees };
 }
 
+// ---------------- Employee master (canonical names) ----------------
+// Per-person money is intentionally never shown in this UI (only company-
+// wide aggregates) -- this registry exists purely so altas/bajas in
+// "Movimientos de personal" display a readable, correctable name instead of
+// a raw employee_code, since the source Excel truncates some names badly.
+
+function employeeDisplayName(code) {
+  if (employeeMaster.has(code)) return employeeMaster.get(code);
+  const line = lines.find(l => l.employee_code === code);
+  return line ? line.employee_name : code;
+}
+
+async function upsertEmployeeName(code, name) {
+  const { error } = await supabase.from("witme_payroll_employees")
+    .upsert({ employee_code: code, display_name: name, updated_at: new Date().toISOString() });
+  if (error) { alert("No se pudo guardar el nombre."); console.error(error); return false; }
+  employeeMaster.set(code, name);
+  return true;
+}
+
 // ---------------- Upload ----------------
 
 async function handleUpload() {
@@ -229,6 +252,17 @@ async function handleUpload() {
       .select();
     if (linesErr) throw linesErr;
 
+    // Seed the canonical-name registry for codes never seen before. An
+    // existing master entry (incl. a manual correction) is never overwritten.
+    const newCodes = employees.filter(e => !employeeMaster.has(e.employee_code));
+    if (newCodes.length) {
+      const { data: insertedMaster, error: masterErr } = await supabase.from("witme_payroll_employees")
+        .upsert(newCodes.map(e => ({ employee_code: e.employee_code, display_name: e.employee_name })), { onConflict: "employee_code", ignoreDuplicates: true })
+        .select();
+      if (masterErr) throw masterErr;
+      for (const m of insertedMaster || []) employeeMaster.set(m.employee_code, m.display_name);
+    }
+
     runs = runs.filter(r => r.id !== run.id);
     runs.push(run);
     lines = lines.filter(l => l.run_id !== run.id).concat(newLines);
@@ -236,7 +270,7 @@ async function handleUpload() {
     msg.textContent = `Listo: ${employees.length} empleado(s) procesado(s).`;
     msg.className = "form-msg ok";
     ["upXlsx", "upPdf", "upNotes"].forEach(id => { document.getElementById(id).value = ""; });
-    renderAllViews();
+    renderList();
   } catch (err) {
     console.error(err);
     msg.textContent = `No se pudo procesar: ${err.message || err}`;
@@ -255,7 +289,7 @@ async function deleteRun(runId) {
   if (error) { alert("No se pudo eliminar."); console.error(error); return; }
   runs = runs.filter(r => r.id !== runId);
   lines = lines.filter(l => l.run_id !== runId);
-  goToList();
+  renderList();
 }
 
 async function downloadFile(path, btn) {
@@ -268,25 +302,46 @@ async function downloadFile(path, btn) {
   window.open(data.signedUrl, "_blank");
 }
 
-async function updateLineName(lineId, name) {
-  const { error } = await supabase.from("witme_payroll_lines").update({ employee_name: name }).eq("id", lineId);
-  if (error) { alert("No se pudo guardar el nombre."); console.error(error); return; }
-  const l = lines.find(l => l.id === lineId);
-  if (l) l.employee_name = name;
+// ---------------- Derived data ----------------
+
+function nominaRunsChrono() {
+  return runs.filter(r => r.run_type === "nomina").sort((a, b) => (a.year - b.year) || (a.month - b.month));
 }
-
-// ---------------- Rendering ----------------
-
-const state = { view: "list", selectedRunId: null };
-
+function linesFor(runId) { return lines.filter(l => l.run_id === runId); }
 function runsSorted() {
   return [...runs].sort((a, b) => (b.year - a.year) || (b.month - a.month) || a.run_type.localeCompare(b.run_type));
 }
-function linesFor(runId) { return lines.filter(l => l.run_id === runId); }
+
+function computeMovements() {
+  const chrono = nominaRunsChrono();
+  const movements = [];
+  for (let i = 1; i < chrono.length; i++) {
+    const prev = chrono[i - 1], curr = chrono[i];
+    const prevCodes = new Set(linesFor(prev.id).map(l => l.employee_code));
+    const currCodes = new Set(linesFor(curr.id).map(l => l.employee_code));
+    for (const code of currCodes) if (!prevCodes.has(code)) movements.push({ run: curr, type: "alta", code });
+    for (const code of prevCodes) if (!currCodes.has(code)) movements.push({ run: curr, type: "baja", code });
+  }
+  return movements.sort((a, b) => (b.run.year - a.run.year) || (b.run.month - a.run.month));
+}
+
+function missingUploadStatus() {
+  const today = new Date();
+  let expMonth = today.getMonth(); // previous calendar month, 1-based
+  let expYear = today.getFullYear();
+  if (expMonth === 0) { expMonth = 12; expYear -= 1; }
+  const exists = runs.some(r => r.run_type === "nomina" && r.year === expYear && r.month === expMonth);
+  return { missing: !exists && today.getDate() >= MISSING_UPLOAD_GRACE_DAY, year: expYear, month: expMonth };
+}
+
+// ---------------- Rendering ----------------
+// Everything below shows only company-wide aggregates (totals, trend,
+// alerts) or, for movements, a name with no monetary figure -- no table
+// anywhere breaks cost down per employee.
 
 function renderKpis() {
-  const nominaRuns = runs.filter(r => r.run_type === "nomina").sort((a, b) => (b.year - a.year) || (b.month - a.month));
-  const latest = nominaRuns[0];
+  const nominaRuns = nominaRunsChrono();
+  const latest = nominaRuns[nominaRuns.length - 1];
   const latestLines = latest ? linesFor(latest.id) : [];
   const coste = latestLines.reduce((s, l) => s + Number(l.total_coste || 0), 0);
   const liquido = latestLines.reduce((s, l) => s + Number(l.total_liquido || 0), 0);
@@ -298,6 +353,42 @@ function renderKpis() {
     <div class="kpi"><div class="label">EMPLEADOS</div><div class="value">${latestLines.length || "—"}</div><div class="foot">en la última nómina</div></div>
     <div class="kpi"><div class="label">MASA SALARIAL ${latest ? latest.year : ""}</div><div class="value">${money(yearToDate)}</div><div class="foot">coste acumulado en el año</div></div>
   `;
+}
+
+function renderAlerts() {
+  const strip = document.getElementById("alertsStrip");
+  const cards = [];
+
+  const missing = missingUploadStatus();
+  if (missing.missing) {
+    cards.push(`<div class="ops-card neg">
+      <div class="ops-label">NÓMINA PENDIENTE</div>
+      <div class="ops-value">Falta ${MONTH_NAMES[missing.month]} ${missing.year}</div>
+      <div class="ops-foot">Todavía no se ha subido la nómina de ese mes.</div>
+    </div>`);
+  }
+
+  const chrono = nominaRunsChrono();
+  if (chrono.length >= 2) {
+    const prev = chrono[chrono.length - 2], curr = chrono[chrono.length - 1];
+    const prevCoste = linesFor(prev.id).reduce((s, l) => s + Number(l.total_coste || 0), 0);
+    const currCoste = linesFor(curr.id).reduce((s, l) => s + Number(l.total_coste || 0), 0);
+    const pct = prevCoste ? ((currCoste - prevCoste) / prevCoste * 100) : null;
+    const prevCodes = new Set(linesFor(prev.id).map(l => l.employee_code));
+    const currCodes = new Set(linesFor(curr.id).map(l => l.employee_code));
+    const headcountChanged = [...prevCodes].some(c => !currCodes.has(c)) || [...currCodes].some(c => !prevCodes.has(c));
+    if (pct != null && Math.abs(pct) >= ANOMALY_THRESHOLD_PCT) {
+      const cls = headcountChanged ? "" : (pct > 0 ? "neg" : "pos");
+      cards.push(`<div class="ops-card ${cls}">
+        <div class="ops-label">VARIACIÓN DE COSTE</div>
+        <div class="ops-value">${pct > 0 ? "+" : ""}${pct.toFixed(0)}%</div>
+        <div class="ops-foot">${MONTH_NAMES[curr.month]} ${curr.year} vs ${MONTH_NAMES[prev.month]} ${prev.year}${headcountChanged ? " (hay altas/bajas en medio)" : " — sin cambio de plantilla, conviene revisar"}</div>
+      </div>`);
+    }
+  }
+
+  strip.innerHTML = cards.join("");
+  strip.style.display = cards.length ? "grid" : "none";
 }
 
 function renderRunsTable() {
@@ -316,7 +407,6 @@ function renderRunsTable() {
       <td>${money(coste)}</td>
       <td style="text-align:left;">${r.uploaded_at ? new Date(r.uploaded_at).toLocaleDateString("es-ES") : "—"}</td>
       <td>
-        <button class="btn-secondary" data-action="view" data-run-id="${r.id}">Ver</button>
         ${r.xlsx_path ? `<button class="btn-secondary" data-action="xlsx" data-run-id="${r.id}">Excel</button>` : ""}
         ${r.pdf_path ? `<button class="btn-secondary" data-action="pdf" data-run-id="${r.id}">PDF</button>` : ""}
         <button class="btn-icon-delete" data-action="delete" data-run-id="${r.id}" title="Eliminar">🗑</button>
@@ -331,7 +421,7 @@ function renderTrendChart() {
     box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js).</div>';
     return;
   }
-  const nominaRuns = runs.filter(r => r.run_type === "nomina").sort((a, b) => (a.year - b.year) || (a.month - b.month));
+  const nominaRuns = nominaRunsChrono();
   const labels = nominaRuns.map(r => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(2)}`);
   const data = nominaRuns.map(r => linesFor(r.id).reduce((s, l) => s + Number(l.total_coste || 0), 0));
 
@@ -356,118 +446,28 @@ function renderTrendChart() {
   });
 }
 
-function populateYearSelect() {
-  const sel = document.getElementById("annualYear");
-  const years = [...new Set(runs.map(r => r.year))].sort((a, b) => b - a);
-  const prev = sel.value;
-  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
-  if (years.length) sel.value = years.includes(Number(prev)) ? prev : years[0];
-}
-
-function renderAnnualTable() {
-  const sel = document.getElementById("annualYear");
-  const year = Number(sel.value);
-  const byCode = new Map();
-  for (const r of runs) {
-    if (r.year !== year) continue;
-    for (const l of linesFor(r.id)) {
-      if (!byCode.has(l.employee_code)) byCode.set(l.employee_code, {
-        code: l.employee_code, name: l.employee_name,
-        nominaCount: 0, nominaLiquido: 0, nominaCoste: 0, bonusLiquido: 0, bonusCoste: 0,
-        lastMonth: 0,
-      });
-      const e = byCode.get(l.employee_code);
-      if (r.run_type === "nomina") {
-        e.nominaCount++;
-        e.nominaLiquido += Number(l.total_liquido || 0);
-        e.nominaCoste += Number(l.total_coste || 0);
-      } else {
-        e.bonusLiquido += Number(l.total_liquido || 0);
-        e.bonusCoste += Number(l.total_coste || 0);
-      }
-      // Use the name from the most recent month seen, so a later manual
-      // correction (or a less-truncated source row) wins the display label.
-      if (r.month >= e.lastMonth) { e.lastMonth = r.month; e.name = l.employee_name; }
-    }
-  }
-  const rows = [...byCode.values()].sort((a, b) => a.name.localeCompare(b.name));
-  document.getElementById("annualEmpty").style.display = rows.length ? "none" : "block";
-  document.getElementById("annualBody").innerHTML = rows.map(e => `<tr>
-    <td style="text-align:left;">${escapeHtml(e.name)} <span style="color:var(--ink-soft); font-size:11px;">(${escapeHtml(e.code)})</span></td>
-    <td>${e.nominaCount}</td>
-    <td>${money(e.nominaLiquido)}</td>
-    <td>${money(e.nominaCoste)}</td>
-    <td>${money(e.bonusLiquido)}</td>
-    <td>${money(e.bonusCoste)}</td>
-    <td>${money(e.nominaLiquido + e.bonusLiquido)}</td>
-    <td>${money(e.nominaCoste + e.bonusCoste)}</td>
+function renderMovements() {
+  const movements = computeMovements();
+  document.getElementById("movementsEmpty").style.display = movements.length ? "none" : "block";
+  document.getElementById("movementsBody").innerHTML = movements.map(m => `<tr>
+    <td style="text-align:left;">${MONTH_NAMES[m.run.month]} ${m.run.year}</td>
+    <td style="text-align:left;"><span class="status ${m.type === "alta" ? "nuevo" : "cerrado"}">${m.type === "alta" ? "Alta" : "Baja"}</span></td>
+    <td style="text-align:left;"><span class="editable-name" data-emp-code="${escapeHtml(m.code)}" title="Clic para corregir el nombre">${escapeHtml(employeeDisplayName(m.code))}</span></td>
   </tr>`).join("");
-  const tot = rows.reduce((acc, e) => ({
-    nominaLiquido: acc.nominaLiquido + e.nominaLiquido, nominaCoste: acc.nominaCoste + e.nominaCoste,
-    bonusLiquido: acc.bonusLiquido + e.bonusLiquido, bonusCoste: acc.bonusCoste + e.bonusCoste,
-  }), { nominaLiquido: 0, nominaCoste: 0, bonusLiquido: 0, bonusCoste: 0 });
-  document.getElementById("annualFoot").innerHTML = `<td style="text-align:left;">Total (${rows.length})</td><td></td>
-    <td>${money(tot.nominaLiquido)}</td><td>${money(tot.nominaCoste)}</td>
-    <td>${money(tot.bonusLiquido)}</td><td>${money(tot.bonusCoste)}</td>
-    <td>${money(tot.nominaLiquido + tot.bonusLiquido)}</td><td>${money(tot.nominaCoste + tot.bonusCoste)}</td>`;
 }
 
 function renderList() {
   renderKpis();
+  renderAlerts();
   renderRunsTable();
   renderTrendChart();
-  populateYearSelect();
-  renderAnnualTable();
+  renderMovements();
 }
 
-function goToList() {
-  state.view = "list"; state.selectedRunId = null;
-  document.getElementById("listView").style.display = "block";
-  document.getElementById("detailView").style.display = "none";
-  renderList();
-}
-
-function goToDetail(runId) {
-  state.view = "detail"; state.selectedRunId = runId;
-  document.getElementById("listView").style.display = "none";
-  document.getElementById("detailView").style.display = "block";
-  renderDetail(runId);
-}
-
-function renderDetail(runId) {
-  const run = runs.find(r => r.id === runId);
-  if (!run) { goToList(); return; }
-  const ls = [...linesFor(runId)].sort((a, b) => a.employee_name.localeCompare(b.employee_name));
-  const liquido = ls.reduce((s, l) => s + Number(l.total_liquido || 0), 0);
-  const coste = ls.reduce((s, l) => s + Number(l.total_coste || 0), 0);
-
-  document.getElementById("runHeader").innerHTML = `
-    <div>
-      <h2>${escapeHtml(run.period_label || `${MONTH_NAMES[run.month]} ${run.year}`)}</h2>
-      <div class="trip-meta"><span class="status ${run.run_type}">${RUN_TYPE_LABELS[run.run_type]}</span> · ${ls.length} empleado(s)${run.notes ? ` · ${escapeHtml(run.notes)}` : ""}</div>
-    </div>
-  `;
-  document.getElementById("runKpiStrip").innerHTML = `
-    <div class="kpi"><div class="label">TOTAL LÍQUIDO</div><div class="value">${money(liquido)}</div><div class="foot"></div></div>
-    <div class="kpi"><div class="label">TOTAL COSTE EMPRESA</div><div class="value">${money(coste)}</div><div class="foot"></div></div>
-  `;
-
-  document.getElementById("linesBody").innerHTML = ls.map(l => `<tr>
-    <td style="text-align:left;">${escapeHtml(l.employee_code)}</td>
-    <td style="text-align:left;"><span class="editable-name" data-line-id="${l.id}" title="Clic para corregir el nombre">${escapeHtml(l.employee_name)}</span></td>
-    <td>${money(l.sueldo_base)}</td>
-    <td>${money(l.total_devengos)}</td>
-    <td>${money(l.total_retencion)}</td>
-    <td>${money(l.total_liquido)}</td>
-    <td>${money(l.coste_ss_empresa)}</td>
-    <td>${money(l.total_coste)}</td>
-  </tr>`).join("");
-  document.getElementById("linesFoot").innerHTML = `<td colspan="5" style="text-align:left;">Total</td>
-    <td>${money(liquido)}</td><td></td><td>${money(coste)}</td>`;
-}
+// ---------------- Name editing (movements table) ----------------
 
 function startNameEdit(span) {
-  const lineId = span.dataset.lineId;
+  const code = span.dataset.empCode;
   const input = document.createElement("input");
   input.type = "text";
   input.value = span.textContent;
@@ -477,40 +477,36 @@ function startNameEdit(span) {
   input.select();
   const commit = async () => {
     const value = input.value.trim();
-    const newSpan = document.createElement("span");
-    newSpan.className = "editable-name";
-    newSpan.dataset.lineId = lineId;
-    newSpan.title = "Clic para corregir el nombre";
-    newSpan.textContent = value;
-    input.replaceWith(newSpan);
-    if (value && value !== span.textContent) await updateLineName(lineId, value);
+    const restored = document.createElement("span");
+    restored.className = "editable-name";
+    restored.dataset.empCode = code;
+    restored.title = "Clic para corregir el nombre";
+    restored.textContent = value || span.textContent;
+    input.replaceWith(restored);
+    if (value && value !== span.textContent) {
+      const ok = await upsertEmployeeName(code, value);
+      if (ok) renderList();
+    }
   };
   input.addEventListener("blur", commit);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
 }
 
-function renderAllViews() {
-  if (state.view === "detail") renderDetail(state.selectedRunId); else renderList();
-}
-
 // ---------------- Event wiring ----------------
 
 document.getElementById("uploadBtn").addEventListener("click", handleUpload);
-document.getElementById("backToListBtn").addEventListener("click", goToList);
-document.getElementById("annualYear").addEventListener("change", renderAnnualTable);
 
 document.getElementById("runsBody").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-run-id]");
   if (!btn) return;
   const runId = btn.dataset.runId;
   const run = runs.find(r => r.id === runId);
-  if (btn.dataset.action === "view") goToDetail(runId);
-  else if (btn.dataset.action === "xlsx") downloadFile(run?.xlsx_path, btn);
+  if (btn.dataset.action === "xlsx") downloadFile(run?.xlsx_path, btn);
   else if (btn.dataset.action === "pdf") downloadFile(run?.pdf_path, btn);
   else if (btn.dataset.action === "delete") deleteRun(runId);
 });
 
-document.getElementById("linesBody").addEventListener("click", (e) => {
+document.getElementById("movementsBody").addEventListener("click", (e) => {
   const span = e.target.closest(".editable-name");
   if (span) startNameEdit(span);
 });
@@ -518,11 +514,13 @@ document.getElementById("linesBody").addEventListener("click", (e) => {
 // ---------------- Boot ----------------
 
 async function fetchAll() {
-  const [r, l] = await Promise.all([
+  const [r, l, e] = await Promise.all([
     fetchAllRows(supabase, "witme_payroll_runs"),
     fetchAllRows(supabase, "witme_payroll_lines"),
+    fetchAllRows(supabase, "witme_payroll_employees"),
   ]);
   runs = r; lines = l;
+  employeeMaster = new Map(e.map(row => [row.employee_code, row.display_name]));
 }
 
 async function renderAll() {
