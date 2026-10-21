@@ -11,7 +11,8 @@ const money = (n) => n == null ? "—" : Number(n).toLocaleString("es-ES", { sty
 
 let runs = [], lines = [];
 let employeeMaster = new Map(); // employee_code -> display_name
-let trendChart = null;
+let trendChart = null, employeeChart = null;
+const state = { view: "list", selectedRunId: null, selectedEmployeeCode: null };
 
 initAuth(renderAll);
 
@@ -174,10 +175,9 @@ function parseDetalle(aoa) {
 }
 
 // ---------------- Employee master (canonical names) ----------------
-// Per-person money is intentionally never shown in this UI (only company-
-// wide aggregates) -- this registry exists purely so altas/bajas in
-// "Movimientos de personal" display a readable, correctable name instead of
-// a raw employee_code, since the source Excel truncates some names badly.
+// A code's canonical name lives here, not on each line, so a correction
+// (the source Excel truncates some names badly) applies to every past and
+// future upload at once, and to altas/bajas in "Movimientos de personal".
 
 function employeeDisplayName(code) {
   if (employeeMaster.has(code)) return employeeMaster.get(code);
@@ -271,7 +271,7 @@ async function handleUpload() {
     msg.textContent = `Listo: ${employees.length} empleado(s) procesado(s).`;
     msg.className = "form-msg ok";
     ["upXlsx", "upPdf", "upNotes"].forEach(id => { document.getElementById(id).value = ""; });
-    renderList();
+    renderAllViews();
   } catch (err) {
     console.error(err);
     msg.textContent = `No se pudo procesar: ${err.message || err}`;
@@ -290,7 +290,7 @@ async function deleteRun(runId) {
   if (error) { alert("No se pudo eliminar."); console.error(error); return; }
   runs = runs.filter(r => r.id !== runId);
   lines = lines.filter(l => l.run_id !== runId);
-  renderList();
+  goToList();
 }
 
 async function downloadFile(path, btn) {
@@ -326,6 +326,30 @@ function computeMovements() {
   return movements.sort((a, b) => (b.run.year - a.run.year) || (b.run.month - a.run.month));
 }
 
+function computeAnnualRows(year) {
+  const byCode = new Map();
+  for (const r of runs) {
+    if (r.year !== year) continue;
+    for (const l of linesFor(r.id)) {
+      if (!byCode.has(l.employee_code)) byCode.set(l.employee_code, {
+        code: l.employee_code, nominaCount: 0, nominaLiquido: 0, nominaCoste: 0, bonusLiquido: 0, bonusCoste: 0,
+      });
+      const e = byCode.get(l.employee_code);
+      if (r.run_type === "nomina") {
+        e.nominaCount++;
+        e.nominaLiquido += Number(l.total_liquido || 0);
+        e.nominaCoste += Number(l.total_coste || 0);
+      } else {
+        e.bonusLiquido += Number(l.total_liquido || 0);
+        e.bonusCoste += Number(l.total_coste || 0);
+      }
+    }
+  }
+  const rows = [...byCode.values()].map(e => ({ ...e, name: employeeDisplayName(e.code) }));
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  return rows;
+}
+
 function missingUploadStatus() {
   const today = new Date();
   let expMonth = today.getMonth(); // previous calendar month, 1-based
@@ -336,9 +360,6 @@ function missingUploadStatus() {
 }
 
 // ---------------- Rendering ----------------
-// Everything below shows only company-wide aggregates (totals, trend,
-// alerts) or, for movements, a name with no monetary figure -- no table
-// anywhere breaks cost down per employee.
 
 function renderKpis() {
   const nominaRuns = nominaRunsChrono();
@@ -408,6 +429,7 @@ function renderRunsTable() {
       <td>${money(coste)}</td>
       <td style="text-align:left;">${r.uploaded_at ? new Date(r.uploaded_at).toLocaleDateString("es-ES") : "—"}</td>
       <td>
+        <button class="btn-secondary" data-action="view" data-run-id="${r.id}">Ver</button>
         ${r.xlsx_path ? `<button class="btn-secondary" data-action="xlsx" data-run-id="${r.id}">Excel</button>` : ""}
         ${r.pdf_path ? `<button class="btn-secondary" data-action="pdf" data-run-id="${r.id}">PDF</button>` : ""}
         <button class="btn-icon-delete" data-action="delete" data-run-id="${r.id}" title="Eliminar">🗑</button>
@@ -457,15 +479,199 @@ function renderMovements() {
   </tr>`).join("");
 }
 
+function populateYearSelect() {
+  const sel = document.getElementById("annualYear");
+  const years = [...new Set(runs.map(r => r.year))].sort((a, b) => b - a);
+  const prev = sel.value;
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join("");
+  if (years.length) sel.value = years.includes(Number(prev)) ? prev : years[0];
+}
+
+function renderAnnualTable() {
+  const year = Number(document.getElementById("annualYear").value);
+  const rows = computeAnnualRows(year);
+  document.getElementById("annualEmpty").style.display = rows.length ? "none" : "block";
+  document.getElementById("annualBody").innerHTML = rows.map(e => `<tr>
+    <td style="text-align:left;">${escapeHtml(e.name)} <span style="color:var(--ink-soft); font-size:11px;">(${escapeHtml(e.code)})</span></td>
+    <td>${e.nominaCount}</td>
+    <td>${money(e.nominaLiquido)}</td>
+    <td>${money(e.nominaCoste)}</td>
+    <td>${money(e.bonusLiquido)}</td>
+    <td>${money(e.bonusCoste)}</td>
+    <td>${money(e.nominaLiquido + e.bonusLiquido)}</td>
+    <td>${money(e.nominaCoste + e.bonusCoste)}</td>
+    <td><button class="btn-secondary" data-emp-code="${escapeHtml(e.code)}">Ver histórico</button></td>
+  </tr>`).join("");
+  const tot = rows.reduce((acc, e) => ({
+    nominaLiquido: acc.nominaLiquido + e.nominaLiquido, nominaCoste: acc.nominaCoste + e.nominaCoste,
+    bonusLiquido: acc.bonusLiquido + e.bonusLiquido, bonusCoste: acc.bonusCoste + e.bonusCoste,
+  }), { nominaLiquido: 0, nominaCoste: 0, bonusLiquido: 0, bonusCoste: 0 });
+  document.getElementById("annualFoot").innerHTML = `<td style="text-align:left;">Total (${rows.length})</td><td></td>
+    <td>${money(tot.nominaLiquido)}</td><td>${money(tot.nominaCoste)}</td>
+    <td>${money(tot.bonusLiquido)}</td><td>${money(tot.bonusCoste)}</td>
+    <td>${money(tot.nominaLiquido + tot.bonusLiquido)}</td><td>${money(tot.nominaCoste + tot.bonusCoste)}</td><td></td>`;
+}
+
+function exportAnnualCsv() {
+  const year = document.getElementById("annualYear").value;
+  const rows = computeAnnualRows(Number(year));
+  const header = ["Código", "Nombre", "Nóminas", "Líquido nómina", "Coste nómina", "Líquido bonus", "Coste bonus", "Total líquido", "Total coste"];
+  const data = rows.map(e => [e.code, e.name, e.nominaCount, e.nominaLiquido.toFixed(2), e.nominaCoste.toFixed(2), e.bonusLiquido.toFixed(2), e.bonusCoste.toFixed(2), (e.nominaLiquido + e.bonusLiquido).toFixed(2), (e.nominaCoste + e.bonusCoste).toFixed(2)]);
+  const csv = [header, ...data].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `nominas_anual_${year}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function renderList() {
   renderKpis();
   renderAlerts();
   renderRunsTable();
   renderTrendChart();
+  populateYearSelect();
+  renderAnnualTable();
   renderMovements();
 }
 
-// ---------------- Name editing (movements table) ----------------
+function goToList() {
+  state.view = "list"; state.selectedRunId = null; state.selectedEmployeeCode = null;
+  document.getElementById("listView").style.display = "block";
+  document.getElementById("detailView").style.display = "none";
+  document.getElementById("employeeView").style.display = "none";
+  renderList();
+}
+
+function goToDetail(runId) {
+  state.view = "detail"; state.selectedRunId = runId;
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("detailView").style.display = "block";
+  document.getElementById("employeeView").style.display = "none";
+  renderDetail(runId);
+}
+
+function renderDetail(runId) {
+  const run = runs.find(r => r.id === runId);
+  if (!run) { goToList(); return; }
+  const ls = [...linesFor(runId)].sort((a, b) => employeeDisplayName(a.employee_code).localeCompare(employeeDisplayName(b.employee_code)));
+  const liquido = ls.reduce((s, l) => s + Number(l.total_liquido || 0), 0);
+  const coste = ls.reduce((s, l) => s + Number(l.total_coste || 0), 0);
+
+  document.getElementById("runHeader").innerHTML = `
+    <div>
+      <h2>${escapeHtml(run.period_label || `${MONTH_NAMES[run.month]} ${run.year}`)}</h2>
+      <div class="trip-meta"><span class="status ${run.run_type}">${RUN_TYPE_LABELS[run.run_type]}</span> · ${ls.length} empleado(s)${run.notes ? ` · ${escapeHtml(run.notes)}` : ""}</div>
+    </div>
+  `;
+  document.getElementById("runKpiStrip").innerHTML = `
+    <div class="kpi"><div class="label">TOTAL LÍQUIDO</div><div class="value">${money(liquido)}</div><div class="foot"></div></div>
+    <div class="kpi"><div class="label">TOTAL COSTE EMPRESA</div><div class="value">${money(coste)}</div><div class="foot"></div></div>
+  `;
+
+  document.getElementById("linesBody").innerHTML = ls.map(l => `<tr>
+    <td style="text-align:left;">${escapeHtml(l.employee_code)}</td>
+    <td style="text-align:left;"><span class="editable-name" data-emp-code="${escapeHtml(l.employee_code)}" title="Clic para corregir el nombre">${escapeHtml(employeeDisplayName(l.employee_code))}</span></td>
+    <td>${money(l.sueldo_base)}</td>
+    <td>${money(l.total_devengos)}</td>
+    <td>${money(l.total_retencion)}</td>
+    <td>${money(l.total_liquido)}</td>
+    <td>${money(l.coste_ss_empresa)}</td>
+    <td>${money(l.total_coste)}</td>
+  </tr>`).join("");
+  document.getElementById("linesFoot").innerHTML = `<td colspan="5" style="text-align:left;">Total</td>
+    <td>${money(liquido)}</td><td></td><td>${money(coste)}</td>`;
+}
+
+// ---------------- Employee detail view ----------------
+
+function goToEmployee(code) {
+  state.view = "employee"; state.selectedEmployeeCode = code;
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("detailView").style.display = "none";
+  document.getElementById("employeeView").style.display = "block";
+  renderEmployee(code);
+}
+
+function employeeLinesChrono(code) {
+  return lines.filter(l => l.employee_code === code)
+    .map(l => ({ ...l, run: runs.find(r => r.id === l.run_id) }))
+    .filter(l => l.run)
+    .sort((a, b) => (a.run.year - b.run.year) || (a.run.month - b.run.month) || a.run.run_type.localeCompare(b.run.run_type));
+}
+
+function renderEmployee(code) {
+  const empLines = employeeLinesChrono(code);
+  const name = employeeDisplayName(code);
+  const nominaLines = empLines.filter(l => l.run.run_type === "nomina");
+  const last = empLines[empLines.length - 1];
+
+  document.getElementById("employeeHeader").innerHTML = `
+    <div>
+      <h2><span class="editable-name" data-emp-code="${escapeHtml(code)}" title="Clic para corregir el nombre">${escapeHtml(name)}</span></h2>
+      <div class="trip-meta">Código ${escapeHtml(code)} · ${empLines.length} subida(s) registrada(s)${last ? ` · alta ${last.fecha_alta ? new Date(last.fecha_alta + "T00:00:00").toLocaleDateString("es-ES") : "—"}` : ""}</div>
+    </div>
+  `;
+
+  const totalLiquido = empLines.reduce((s, l) => s + Number(l.total_liquido || 0), 0);
+  const totalCoste = empLines.reduce((s, l) => s + Number(l.total_coste || 0), 0);
+  document.getElementById("employeeKpiStrip").innerHTML = `
+    <div class="kpi"><div class="label">TOTAL LÍQUIDO (histórico)</div><div class="value">${money(totalLiquido)}</div><div class="foot">todas las subidas</div></div>
+    <div class="kpi"><div class="label">TOTAL COSTE (histórico)</div><div class="value">${money(totalCoste)}</div><div class="foot">todas las subidas</div></div>
+    <div class="kpi"><div class="label">ÚLTIMA NÓMINA</div><div class="value">${nominaLines.length ? money(nominaLines[nominaLines.length - 1].total_liquido) : "—"}</div><div class="foot">${nominaLines.length ? `${MONTH_NAMES[nominaLines[nominaLines.length - 1].run.month]} ${nominaLines[nominaLines.length - 1].run.year}` : ""}</div></div>
+  `;
+
+  renderEmployeeChart(empLines);
+
+  document.getElementById("employeeLinesBody").innerHTML = empLines.map(l => `<tr>
+    <td style="text-align:left;">${MONTH_NAMES[l.run.month]} ${l.run.year}</td>
+    <td style="text-align:left;"><span class="status ${l.run.run_type}">${RUN_TYPE_LABELS[l.run.run_type]}</span></td>
+    <td>${money(l.total_devengos)}</td>
+    <td>${money(l.total_retencion)}</td>
+    <td>${money(l.total_liquido)}</td>
+    <td>${money(l.total_coste)}</td>
+  </tr>`).join("");
+}
+
+function renderEmployeeChart(empLines) {
+  const box = document.getElementById("employeeChart").parentElement;
+  if (typeof Chart === "undefined") {
+    box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:20px;">No se ha podido cargar la librería de gráficos (Chart.js).</div>';
+    return;
+  }
+  const labels = empLines.map(l => `${MONTH_NAMES[l.run.month].slice(0, 3)} ${String(l.run.year).slice(2)}${l.run.run_type === "bonus" ? " (bonus)" : ""}`);
+  const liquido = empLines.map(l => Number(l.total_liquido || 0));
+  const coste = empLines.map(l => Number(l.total_coste || 0));
+
+  const ctx = document.getElementById("employeeChart").getContext("2d");
+  const gridColor = getComputedStyle(document.body).getPropertyValue("--line").trim();
+  const inkSoft = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
+  const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim();
+  const neg = getComputedStyle(document.body).getPropertyValue("--neg").trim();
+
+  if (employeeChart) employeeChart.destroy();
+  employeeChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Líquido", data: liquido, borderColor: accent, backgroundColor: accent, tension: 0.2 },
+        { label: "Coste empresa", data: coste, borderColor: neg, backgroundColor: neg, tension: 0.2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 } } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${money(c.parsed.y)}` } } },
+      scales: {
+        y: { grid: { color: gridColor }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 }, callback: v => money(v) } },
+        x: { grid: { display: false }, ticks: { color: inkSoft, font: { family: "IBM Plex Mono", size: 11 } } },
+      },
+    },
+  });
+}
+
+// ---------------- Name editing (shared: movements, run detail, employee detail) ----------------
 
 function startNameEdit(span) {
   const code = span.dataset.empCode;
@@ -486,28 +692,46 @@ function startNameEdit(span) {
     input.replaceWith(restored);
     if (value && value !== span.textContent) {
       const ok = await upsertEmployeeName(code, value);
-      if (ok) renderList();
+      if (ok) renderAllViews();
     }
   };
   input.addEventListener("blur", commit);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
 }
 
+function renderAllViews() {
+  if (state.view === "detail") renderDetail(state.selectedRunId);
+  else if (state.view === "employee") renderEmployee(state.selectedEmployeeCode);
+  else renderList();
+}
+
 // ---------------- Event wiring ----------------
 
 document.getElementById("uploadBtn").addEventListener("click", handleUpload);
+document.getElementById("backToListBtn").addEventListener("click", goToList);
+document.getElementById("backFromEmployeeBtn").addEventListener("click", goToList);
+document.getElementById("annualYear").addEventListener("change", renderAnnualTable);
+document.getElementById("exportCsvBtn").addEventListener("click", exportAnnualCsv);
 
 document.getElementById("runsBody").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-run-id]");
   if (!btn) return;
   const runId = btn.dataset.runId;
   const run = runs.find(r => r.id === runId);
-  if (btn.dataset.action === "xlsx") downloadFile(run?.xlsx_path, btn);
+  if (btn.dataset.action === "view") goToDetail(runId);
+  else if (btn.dataset.action === "xlsx") downloadFile(run?.xlsx_path, btn);
   else if (btn.dataset.action === "pdf") downloadFile(run?.pdf_path, btn);
   else if (btn.dataset.action === "delete") deleteRun(runId);
 });
 
-document.getElementById("movementsBody").addEventListener("click", (e) => {
+document.getElementById("annualBody").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-emp-code]");
+  if (btn) goToEmployee(btn.dataset.empCode);
+});
+
+// Name edits can start from movements, the run-detail table, or the
+// employee-detail header -- one delegated listener covers all three.
+document.getElementById("dashboardView").addEventListener("click", (e) => {
   const span = e.target.closest(".editable-name");
   if (span) startNameEdit(span);
 });

@@ -431,14 +431,19 @@ deducción igual y de signo contrario) se guarda igualmente en
 - Los archivos originales (Excel + PDF) se guardan en el bucket privado de
   Storage `nominas` (no público).
 
-**A propósito, ningún importe aparece desglosado por persona en la
-pantalla** — ni en el historial de subidas, ni en ningún listado. Lo único
-que se ve por persona es el nombre (sin importe) en "Movimientos de
-personal", al detectar una alta o baja. Todo lo demás son cifras
-agregadas de toda la empresa:
+Además de las cifras agregadas de empresa, hay 3 vistas con detalle por
+persona (nombre + importes) — viables porque el acceso a esta sección está
+muy restringido (ver más abajo):
 
 - KPIs del último periodo (coste empresa, líquido, nº empleados, masa
   salarial acumulada en el año) y gráfico de coste mensual.
+- **Detalle de cada subida** (botón "Ver" en el historial): una fila por
+  empleado con sueldo base, devengos, retención, líquido y coste total.
+- **Listado anual por empleado**: para el año elegido, nómina y bonus
+  acumulados por persona (líquido y coste, por separado y en total), con
+  botón "Ver histórico" por fila y exportación a CSV.
+- **Histórico individual**: al pulsar "Ver histórico", todas las subidas
+  de esa persona (nómina y bonus) con un gráfico de líquido/coste por mes.
 - **Aviso de nómina pendiente**: si ya ha pasado el día 10 del mes y no se
   ha subido la nómina del mes natural anterior, aparece una tarjeta de
   aviso.
@@ -447,15 +452,20 @@ agregadas de toda la empresa:
   si coincide con una alta/baja de plantilla (cambio esperable) o no
   (conviene revisar).
 - **Movimientos de personal**: compara los `employee_code` de cada nómina
-  con los de la anterior y lista altas (código nuevo) y bajas (código que
-  deja de aparecer), con el nombre pero sin ningún importe.
+  con los de la anterior y lista altas y bajas, por nombre.
 
-**Acceso restringido, a diferencia del resto del panel**: las 3 tablas y
-el bucket de Storage usan la sección `rrhh` del sistema de permisos (ver
+El nombre (en cualquiera de estas vistas, o en movimientos de personal) es
+editable con un clic — la corrección se guarda en `witme_payroll_employees`
+por `employee_code`, así que aplica a todas las subidas de esa persona,
+pasadas y futuras, no solo a la fila donde se corrigió.
+
+**Acceso muy restringido, a diferencia del resto del panel**: las 3 tablas
+y el bucket de Storage usan la sección `rrhh` del sistema de permisos (ver
 "Acceso y permisos por sección" más abajo) — a diferencia de Facturación/
 Objetivos/Viajes/Estado, nadie la tiene por defecto; Lukas se la concede
-a quien quiera desde `usuarios.html`, uno a uno, porque son datos de
-sueldo, DNI y retenciones de todo el equipo.
+uno a uno desde `usuarios.html` porque son datos de sueldo, DNI y
+retenciones de todo el equipo. El detalle por persona de estas 3 vistas
+solo tiene sentido mientras esa lista se mantenga corta y de confianza.
 
 ### Estado de los datos
 
