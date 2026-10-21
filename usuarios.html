@@ -56,9 +56,10 @@
           <label><input type="checkbox" value="objetivos"> Objetivos</label>
           <label><input type="checkbox" value="viajes"> Viajes</label>
           <label><input type="checkbox" value="estado"> Estado</label>
+          <label><input type="checkbox" value="rrhh"> RRHH (Nóminas)</label>
         </div>
       </div>
-      <div class="field" style="margin-top:10px;"><label><input type="checkbox" id="newIsAdmin"> Administrador (acceso a todo, incluida esta pantalla y Nóminas)</label></div>
+      <div class="field" style="margin-top:10px;"><label><input type="checkbox" id="newIsAdmin"> Administrador (acceso a todo, incluida esta pantalla)</label></div>
       <div class="form-actions">
         <button class="btn-primary" id="inviteBtn" type="button">+ Invitar</button>
         <span class="form-msg" id="inviteMsg"></span>
@@ -75,6 +76,7 @@
           <th>Objetivos</th>
           <th>Viajes</th>
           <th>Estado</th>
+          <th>RRHH</th>
           <th>Admin</th>
           <th></th>
         </tr></thead>
@@ -83,9 +85,9 @@
     </div>
 
     <div class="footnote">
-      <strong>Qué es esto:</strong> cada casilla da acceso a uno de los menús principales del panel (Facturación, Objetivos, Viajes, Estado) — se aplica de verdad a nivel de base de datos (no es solo ocultar el menú), así que alguien sin una casilla marcada no puede ver esos datos aunque escriba la URL directamente. "Administrador" da acceso a todo, incluida esta pantalla y la gestión de usuarios.
+      <strong>Qué es esto:</strong> cada casilla da acceso a uno de los menús principales del panel (Facturación, Objetivos, Viajes, Estado, RRHH) — se aplica de verdad a nivel de base de datos (no es solo ocultar el menú), así que alguien sin una casilla marcada no puede ver esos datos aunque escriba la URL directamente. "Administrador" da acceso a todo, incluida esta pantalla y la gestión de usuarios.
       <br><br>
-      <strong>Nóminas no aparece aquí a propósito:</strong> sigue restringida solo a las cuentas de Lukas, fijo en la base de datos, independientemente de lo que se marque en esta pantalla — son datos demasiado sensibles para dejarlos como una casilla más.
+      <strong>RRHH da acceso a Nóminas</strong> — sueldos, DNI y retenciones de todo el equipo. Márcala solo para quien de verdad deba ver eso; a diferencia de las otras 4, nadie la tiene por defecto al dar de alta a alguien.
       <br><br>
       Invitar a alguien nuevo le manda un enlace de acceso a su email (igual que el que recibe cualquiera al iniciar sesión) — hace falta porque el panel solo deja entrar a cuentas ya dadas de alta.
     </div>

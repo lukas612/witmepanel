@@ -2,8 +2,8 @@ import { supabase } from "./auth.js";
 import { getMyAccess, hasSection } from "./permissions.js";
 
 // `section: null` means always visible to anyone logged in. `section: "admin"`
-// means visible only to the two Lukas accounts (same as Nóminas' own RLS,
-// not part of the 4-section grant system).
+// means visible only to admins (is_admin in witme_users) -- used for the
+// user-management screen itself, which isn't a grantable section.
 const GROUPS = [
   {
     label: "Inicio",
@@ -41,7 +41,7 @@ const GROUPS = [
   },
   {
     label: "RRHH",
-    section: "admin",
+    section: "rrhh",
     pages: [
       { href: "nominas.html", label: "Nóminas" },
     ],

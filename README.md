@@ -450,11 +450,12 @@ agregadas de toda la empresa:
   con los de la anterior y lista altas (código nuevo) y bajas (código que
   deja de aparecer), con el nombre pero sin ningún importe.
 
-**Acceso restringido, a diferencia de todo el resto del panel**: las 3
-tablas y el bucket de Storage solo son legibles/editables por
-`lukas@witme.es`/`lukas@lukasochoa.com` (RLS), no por la lista habitual de
-cuentas del equipo — son datos de sueldo, DNI y retenciones de todas las
-personas que sí tienen acceso al resto de este mismo panel.
+**Acceso restringido, a diferencia del resto del panel**: las 3 tablas y
+el bucket de Storage usan la sección `rrhh` del sistema de permisos (ver
+"Acceso y permisos por sección" más abajo) — a diferencia de Facturación/
+Objetivos/Viajes/Estado, nadie la tiene por defecto; Lukas se la concede
+a quien quiera desde `usuarios.html`, uno a uno, porque son datos de
+sueldo, DNI y retenciones de todo el equipo.
 
 ### Estado de los datos
 
@@ -489,21 +490,21 @@ El panel exige iniciar sesión con enlace mágico (email OTP), y usa
 ya existe en `auth.users` **y** tiene una fila en `witme_users`.
 
 Desde `usuarios.html` ("Usuarios y permisos" en el menú Admin), Lukas
-controla, persona a persona, cuál de los 4 menús principales puede ver
-cada una: **Facturación**, **Objetivos**, **Viajes**, **Estado**. Esto no
-es solo ocultar el enlace del menú (`assets/pageNav.js` lo hace, pero
-además):
+controla, persona a persona, cuál de los 5 menús principales puede ver
+cada una: **Facturación**, **Objetivos**, **Viajes**, **Estado**, **RRHH**.
+Esto no es solo ocultar el enlace del menú (`assets/pageNav.js` lo hace,
+pero además):
 
 - `witme_users(email, display_name, is_admin)` — quién existe en el
   panel. `is_admin` salta todas las comprobaciones de sección (y es quien
-  puede entrar a `usuarios.html` y a Nóminas).
+  puede entrar a `usuarios.html`).
 - `witme_section_access(email, section_key)` — qué secciones tiene
   concedidas cada email que no es admin.
 - `witme_has_access(sec)` / `witme_is_registered()` — funciones SQL que
-  **todas** las políticas RLS de las tablas de cada sección usan en vez
-  del antiguo array de emails fijo; así que alguien sin una sección
-  concedida no ve esos datos aunque entre por la URL directamente, igual
-  de real que cualquier otra RLS del panel. Las tablas de referencia
+  **todas** las políticas RLS de las tablas de cada sección usan (Nóminas
+  incluida) en vez de un array de emails fijo; así que alguien sin una
+  sección concedida no ve esos datos aunque entre por la URL directamente,
+  igual de real que cualquier otra RLS del panel. Las tablas de referencia
   compartidas (`witme_fx_rates`, `witme_holded_fx_rates`,
   `witme_year_config`) solo requieren estar registrado, sin sección
   concreta.
@@ -513,10 +514,11 @@ además):
   el usuario tiene la sección de la que dependen (Facturación la mayoría,
   Objetivos la de cumplimiento); si no tiene ninguna, Inicio queda casi
   vacío en vez de romperse.
-- **Nóminas queda fuera de este sistema a propósito**: sigue con su RLS
-  fija a las dos cuentas de Lukas (no aparece como casilla en
-  `usuarios.html`), por ser datos demasiado sensibles para dejarlos como
-  un permiso más que alguien pudiera conceder por error.
+- **RRHH es la única sección que nadie tiene por defecto**: las otras 4 se
+  sembraron con el acceso que el equipo ya tenía antes de este sistema;
+  RRHH (Nóminas: sueldos, DNI, retenciones) empieza sin concederse a
+  nadie más que a los admins, y Lukas la añade explícitamente desde
+  `usuarios.html` para quien de verdad deba verla.
 
 ### Invitar a alguien nuevo
 

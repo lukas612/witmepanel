@@ -1,6 +1,6 @@
 import { supabase } from "./auth.js";
 
-const SECTION_KEYS = ["facturacion", "objetivos", "viajes", "estado"];
+const SECTION_KEYS = ["facturacion", "objetivos", "viajes", "estado", "rrhh"];
 
 let cached = null; // { isAdmin, sections: Set<string> } | null
 

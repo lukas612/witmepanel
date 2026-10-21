@@ -7,6 +7,7 @@ const SECTIONS = [
   { key: "objetivos", label: "Objetivos" },
   { key: "viajes", label: "Viajes" },
   { key: "estado", label: "Estado" },
+  { key: "rrhh", label: "RRHH" },
 ];
 
 let users = [], access = [];
