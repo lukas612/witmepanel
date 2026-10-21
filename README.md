@@ -415,20 +415,42 @@ deducción igual y de signo contrario) se guarda igualmente en
   `bonus`, ruta a los archivos originales en Storage, quién lo subió).
   Volver a subir el mismo periodo reemplaza sus líneas enteras (no las
   combina).
-- `witme_payroll_lines` — una fila por empleado y subida. El nombre se
-  reconstruye con `"${apellido1} ${apellido2}, ${nombre}"` a partir de las
-  3 filas de nombre del Excel; el dato de origen viene truncado para
-  algunos empleados (ej. nombres largos cortados a ~10 caracteres), así que
-  el nombre es editable con un clic en el detalle de cada subida — la
-  corrección se guarda solo para esa fila/mes, no hay un registro maestro
-  de empleados.
+- `witme_payroll_lines` — una fila por empleado y subida, con el desglose
+  completo (sueldo, devengos, deducciones, coste). El nombre de cada fila
+  se reconstruye con `"${apellido1} ${apellido2}, ${nombre}"` a partir de
+  las 3 filas de nombre del Excel.
+- `witme_payroll_employees` — registro de nombre canónico por
+  `employee_code` (consistente mes a mes). El dato de origen viene
+  truncado para algunos empleados (ej. nombres largos cortados a ~10
+  caracteres); corregir el nombre aquí (clic sobre el nombre en
+  "Movimientos de personal") aplica de golpe a todas las subidas, pasadas
+  y futuras, en vez de arreglarlo subida a subida. Al subir una nómina, un
+  `employee_code` nuevo se añade aquí con el nombre tal cual sale del
+  Excel; uno ya existente nunca se sobrescribe solo (para no perder una
+  corrección manual).
 - Los archivos originales (Excel + PDF) se guardan en el bucket privado de
   Storage `nominas` (no público).
-- El listado anual agrupa por `employee_code` (consistente mes a mes) todas
-  las nóminas y bonus de un año: líquido y coste acumulados de cada uno,
-  por separado nómina/bonus y en total.
 
-**Acceso restringido, a diferencia de todo el resto del panel**: las 2
+**A propósito, ningún importe aparece desglosado por persona en la
+pantalla** — ni en el historial de subidas, ni en ningún listado. Lo único
+que se ve por persona es el nombre (sin importe) en "Movimientos de
+personal", al detectar una alta o baja. Todo lo demás son cifras
+agregadas de toda la empresa:
+
+- KPIs del último periodo (coste empresa, líquido, nº empleados, masa
+  salarial acumulada en el año) y gráfico de coste mensual.
+- **Aviso de nómina pendiente**: si ya ha pasado el día 10 del mes y no se
+  ha subido la nómina del mes natural anterior, aparece una tarjeta de
+  aviso.
+- **Aviso de variación de coste**: compara el coste total de la última
+  nómina contra la anterior; si cambia ±15% o más se avisa, distinguiendo
+  si coincide con una alta/baja de plantilla (cambio esperable) o no
+  (conviene revisar).
+- **Movimientos de personal**: compara los `employee_code` de cada nómina
+  con los de la anterior y lista altas (código nuevo) y bajas (código que
+  deja de aparecer), con el nombre pero sin ningún importe.
+
+**Acceso restringido, a diferencia de todo el resto del panel**: las 3
 tablas y el bucket de Storage solo son legibles/editables por
 `lukas@witme.es`/`lukas@lukasochoa.com` (RLS), no por la lista habitual de
 cuentas del equipo — son datos de sueldo, DNI y retenciones de todas las
