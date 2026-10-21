@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Nóminas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Nóminas</h1>
+      <span class="sub">Control de coste de personal — acceso restringido</span>
+    </div>
+    <div>
+      <nav class="page-menu-bar" id="pageMenuBar"></nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <!-- ============== LIST VIEW ============== -->
+  <div id="listView">
+    <div class="kpis" id="kpiStrip"></div>
+
+    <div class="chart-title">SUBIR NÓMINA O BONUS TRIMESTRAL</div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="field"><label for="upYear">Año</label><input type="number" id="upYear" min="2020" max="2100" step="1"></div>
+        <div class="field"><label for="upMonth">Mes</label>
+          <select id="upMonth">
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="field"><label for="upType">Tipo</label>
+          <select id="upType">
+            <option value="nomina">Nómina mensual</option>
+            <option value="bonus">Bonus trimestral</option>
+          </select>
+        </div>
+        <div class="field"><label for="upXlsx">Archivo Excel (resumen de coste)</label><input type="file" id="upXlsx" accept=".xlsx"></div>
+        <div class="field"><label for="upPdf">Archivo PDF (nóminas individuales, opcional)</label><input type="file" id="upPdf" accept=".pdf"></div>
+      </div>
+      <div class="field" style="margin-top:12px;"><label for="upNotes">Notas (opcional)</label><textarea id="upNotes" placeholder="Cualquier incidencia de este periodo"></textarea></div>
+      <div class="form-actions">
+        <button class="btn-primary" id="uploadBtn" type="button">Subir y procesar</button>
+        <span class="form-msg" id="uploadMsg"></span>
+      </div>
+    </div>
+
+    <div class="chart-title" style="margin-top:32px;">HISTORIAL DE SUBIDAS</div>
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Periodo</th>
+          <th style="text-align:left;">Tipo</th>
+          <th>Empleados</th>
+          <th>Total líquido</th>
+          <th>Total coste empresa</th>
+          <th style="text-align:left;">Subido</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="runsBody"></tbody>
+      </table>
+      <div class="empty-note" id="runsEmpty" style="display:none;">Todavía no hay ninguna nómina subida.</div>
+    </div>
+
+    <div class="chart-block">
+      <div class="chart-title">COSTE DE EMPRESA MENSUAL (€)</div>
+      <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="chart-title" style="margin-top:32px; display:flex; align-items:center; gap:12px;">
+      LISTADO ANUAL POR EMPLEADO
+      <select id="annualYear" style="font-family:'IBM Plex Mono', monospace; font-size:12px; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink);"></select>
+    </div>
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Empleado</th>
+          <th>Nóminas</th>
+          <th>Total líquido (nómina)</th>
+          <th>Total coste (nómina)</th>
+          <th>Bonus líquido</th>
+          <th>Bonus coste</th>
+          <th>Total anual líquido</th>
+          <th>Total anual coste</th>
+        </tr></thead>
+        <tbody id="annualBody"></tbody>
+        <tfoot><tr id="annualFoot"></tr></tfoot>
+      </table>
+      <div class="empty-note" id="annualEmpty" style="display:none;">Sin datos para este año todavía.</div>
+    </div>
+
+    <div class="footnote">
+      <strong>Qué es esto:</strong> cada mes (o cada trimestre, para el bonus) se sube aquí el mismo Excel resumen que envía la gestoría (Vanesa) y, si se quiere guardar también, el PDF con las nóminas individuales firmadas. El Excel se procesa en el propio navegador (no se manda a ningún sitio externo más que a guardar en este panel) y se reparte en una fila por empleado con sueldo base, incentivos, deducciones, retenciones, líquido a percibir y coste total para la empresa (el coste de Seguridad Social incluido, que es lo que de verdad cuesta cada persona más allá de lo que cobra). Los conceptos que no encajan en una columna fija (p. ej. "Prestaciones" o el lavado de ticket restaurante) se guardan igualmente sin perderse, solo que agrupados.
+      <br><br>
+      Esta sección solo la puede ver y editar Lukas — a diferencia del resto del panel, aquí hay sueldos, DNI y retenciones de todo el equipo, así que el acceso no sigue la lista habitual de cuentas del panel.
+    </div>
+  </div>
+
+  <!-- ============== RUN DETAIL VIEW ============== -->
+  <div id="detailView" style="display:none;">
+    <button class="btn-secondary" id="backToListBtn" type="button">← Volver al listado</button>
+
+    <div class="trip-header" id="runHeader"></div>
+
+    <div class="kpis" id="runKpiStrip"></div>
+
+    <div class="ledger" style="margin-top:20px;">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Código</th>
+          <th style="text-align:left;">Nombre</th>
+          <th>Sueldo base</th>
+          <th>Total devengos</th>
+          <th>Total retención</th>
+          <th>Total líquido</th>
+          <th>Coste S.S. empresa</th>
+          <th>Total coste</th>
+        </tr></thead>
+        <tbody id="linesBody"></tbody>
+        <tfoot><tr id="linesFoot"></tr></tfoot>
+      </table>
+    </div>
+    <div class="footnote">
+      El nombre se reconstruye automáticamente a partir del Excel y a veces
+      sale incompleto o desordenado (el dato de origen viene truncado para
+      algunos empleados) — haz clic sobre un nombre para corregirlo a mano;
+      el cambio se guarda solo para esta fila.
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/nominas.js"></script>
+</body>
+</html>

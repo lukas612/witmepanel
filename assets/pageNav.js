@@ -30,6 +30,12 @@ const GROUPS = [
     ],
   },
   {
+    label: "RRHH",
+    pages: [
+      { href: "nominas.html", label: "Nóminas" },
+    ],
+  },
+  {
     label: "Estado",
     pages: [
       { href: "estado.html", label: "Estado de los datos" },

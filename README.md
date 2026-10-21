@@ -394,6 +394,46 @@ de "solo puedes tocar lo tuyo" (mantenido simple a propósito; se puede
 endurecer si hace falta). No hay sincronización semanal para estas tablas
 porque el dato nace aquí, no en una hoja externa.
 
+### Nóminas
+
+`nominas.html` (+ `assets/nominas.js`) gestiona el coste de personal. Cada
+mes (y cada trimestre, para el bonus) se sube el mismo Excel resumen que
+envía la gestoría (Vanesa) — hoja "Detalle", una columna por empleado — y,
+si se quiere conservar también, el PDF con las nóminas individuales
+firmadas. El Excel se procesa **en el propio navegador** con SheetJS (no se
+manda a ningún servicio externo, solo se guarda en este panel) localizando
+por contenido (no por número de fila fijo) la fila de códigos de empleado,
+las 3 filas de nombre y la fecha de alta, y repartiendo cada fila de
+concepto en una columna fija (sueldo base, devengos, deducciones,
+retenciones, líquido, coste S.S. empresa, coste total...); lo que no encaja
+en una columna conocida (p. ej. "Prestaciones" o el lavado de ticket
+restaurante/transporte que aparece dos veces, como devengo y como
+deducción igual y de signo contrario) se guarda igualmente en
+`raw_concepts` (JSONB) para no perder nada.
+
+- `witme_payroll_runs` — una fila por subida (año, mes, tipo `nomina` o
+  `bonus`, ruta a los archivos originales en Storage, quién lo subió).
+  Volver a subir el mismo periodo reemplaza sus líneas enteras (no las
+  combina).
+- `witme_payroll_lines` — una fila por empleado y subida. El nombre se
+  reconstruye con `"${apellido1} ${apellido2}, ${nombre}"` a partir de las
+  3 filas de nombre del Excel; el dato de origen viene truncado para
+  algunos empleados (ej. nombres largos cortados a ~10 caracteres), así que
+  el nombre es editable con un clic en el detalle de cada subida — la
+  corrección se guarda solo para esa fila/mes, no hay un registro maestro
+  de empleados.
+- Los archivos originales (Excel + PDF) se guardan en el bucket privado de
+  Storage `nominas` (no público).
+- El listado anual agrupa por `employee_code` (consistente mes a mes) todas
+  las nóminas y bonus de un año: líquido y coste acumulados de cada uno,
+  por separado nómina/bonus y en total.
+
+**Acceso restringido, a diferencia de todo el resto del panel**: las 2
+tablas y el bucket de Storage solo son legibles/editables por
+`lukas@witme.es`/`lukas@lukasochoa.com` (RLS), no por la lista habitual de
+cuentas del equipo — son datos de sueldo, DNI y retenciones de todas las
+personas que sí tienen acceso al resto de este mismo panel.
+
 ### Estado de los datos
 
 `estado.html` (+ `assets/estado.js`) es un registro **de solo lectura**:
