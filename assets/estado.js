@@ -1,4 +1,5 @@
 import { supabase, initAuth } from "./auth.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
@@ -26,6 +27,12 @@ function coversLabel(row) {
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
   loadNote.style.display = "block";
+  const access = await getMyAccess();
+  if (!hasSection(access, "estado")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   const { data, error } = await supabase.from("witme_data_sources").select("*").order("order_index");
   loadNote.style.display = "none";
   if (error) { console.error(error); return; }

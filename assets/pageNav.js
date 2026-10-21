@@ -1,12 +1,20 @@
+import { supabase } from "./auth.js";
+import { getMyAccess, hasSection } from "./permissions.js";
+
+// `section: null` means always visible to anyone logged in. `section: "admin"`
+// means visible only to the two Lukas accounts (same as Nóminas' own RLS,
+// not part of the 4-section grant system).
 const GROUPS = [
   {
     label: "Inicio",
+    section: null,
     pages: [
       { href: "index.html", label: "Resumen ejecutivo" },
     ],
   },
   {
     label: "Facturación",
+    section: "facturacion",
     pages: [
       { href: "facturado.html", label: "Facturado (Holded)" },
       { href: "panama.html", label: "Facturado (Panamá)" },
@@ -17,6 +25,7 @@ const GROUPS = [
   },
   {
     label: "Objetivos",
+    section: "objetivos",
     pages: [
       { href: "objetivos.html", label: "Objetivos" },
       { href: "resultados.html", label: "Resultados" },
@@ -25,20 +34,30 @@ const GROUPS = [
   },
   {
     label: "Viajes",
+    section: "viajes",
     pages: [
       { href: "viajes.html", label: "Viajes" },
     ],
   },
   {
     label: "RRHH",
+    section: "admin",
     pages: [
       { href: "nominas.html", label: "Nóminas" },
     ],
   },
   {
     label: "Estado",
+    section: "estado",
     pages: [
       { href: "estado.html", label: "Estado de los datos" },
+    ],
+  },
+  {
+    label: "Admin",
+    section: "admin",
+    pages: [
+      { href: "usuarios.html", label: "Usuarios y permisos" },
     ],
   },
 ];
@@ -48,14 +67,22 @@ function currentPage() {
   return path.substring(path.lastIndexOf("/") + 1) || "index.html";
 }
 
-function initPageMenu() {
+function visibleGroups(access) {
+  return GROUPS.filter(g => {
+    if (g.section === null) return true;
+    if (g.section === "admin") return access.isAdmin;
+    return hasSection(access, g.section);
+  });
+}
+
+function renderPageMenu(groups) {
   const bar = document.getElementById("pageMenuBar");
   if (!bar) return;
 
   const here = currentPage();
 
   // A group with a single page renders as a plain link (no dropdown needed).
-  bar.innerHTML = GROUPS.map((g, i) => {
+  bar.innerHTML = groups.map((g, i) => {
     const hasActive = g.pages.some(p => p.href === here);
     if (g.pages.length === 1) {
       return `<a class="page-menu-btn${hasActive ? " current" : ""}" href="${g.pages[0].href}">${g.label}</a>`;
@@ -70,7 +97,7 @@ function initPageMenu() {
       </div>`;
   }).join("");
 
-  const entries = GROUPS
+  const entries = groups
     .map((g, i) => ({ g, i }))
     .filter(({ g }) => g.pages.length > 1)
     .map(({ i }) => ({
@@ -106,8 +133,22 @@ function initPageMenu() {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initPageMenu);
-} else {
+async function initPageMenu() {
+  if (!document.getElementById("pageMenuBar")) return;
+  const access = await getMyAccess();
+  renderPageMenu(visibleGroups(access));
+}
+
+function boot() {
   initPageMenu();
+  // A magic-link redirect resolves the session asynchronously after the
+  // page has already loaded -- rebuild the nav once that settles so it
+  // isn't stuck showing nothing (or the wrong thing) for a first-time login.
+  supabase.auth.onAuthStateChange(() => initPageMenu());
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
 }

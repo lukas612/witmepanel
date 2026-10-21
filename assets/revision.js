@@ -1,4 +1,5 @@
 import { supabase, initAuth } from "./auth.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 import {
   MONTHS, money, monthKey, holdedInvoiceUrl,
   fetchClientData, buildIndex, computeReviewableMonths, computeAlerts, toggleReview
@@ -151,6 +152,12 @@ async function renderAll() {
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
+  const access = await getMyAccess();
+  if (!hasSection(access, "facturacion")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   try {
     await fetchAll();
     indexCache = buildIndex(rows);

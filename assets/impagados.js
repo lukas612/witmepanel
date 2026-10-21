@@ -1,5 +1,6 @@
 import { supabase, initAuth } from "./auth.js";
 import { fetchAllRows } from "./supabaseUtil.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const money = (n) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const holdedInvoiceUrl = (invoiceId) => `https://app.holded.com/sales/revenue#open:invoice-${invoiceId}`;
@@ -246,6 +247,12 @@ async function renderAll() {
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
+  const access = await getMyAccess();
+  if (!hasSection(access, "facturacion")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   try {
     rows = await fetchAllRows(supabase, "witme_unpaid_invoices");
     today = new Date();

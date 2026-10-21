@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Witme — Usuarios y permisos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ============== LOGIN VIEW ============== -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+    <h1>Acceso al panel</h1>
+    <p class="sub">Introduce tu correo de Witme y te enviamos un enlace de acceso.</p>
+    <input type="email" id="loginEmail" placeholder="tu@witme.es" autocomplete="email" required>
+    <button type="submit" id="loginSubmit">Enviar enlace de acceso</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============== DASHBOARD VIEW ============== -->
+<div class="wrap" id="dashboardView" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <span class="mark">WITME · CONTROL DE RESULTADOS</span>
+      <h1>Usuarios y permisos</h1>
+      <span class="sub">Quién entra al panel y a qué menús — acceso restringido a Lukas</span>
+    </div>
+    <div>
+      <nav class="page-menu-bar" id="pageMenuBar"></nav>
+      <div class="filters">
+        <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="load-note" id="loadNote" style="display:none;">Cargando datos…</div>
+
+  <div id="pageBody">
+    <div class="chart-title">INVITAR A ALGUIEN NUEVO</div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="field"><label for="newEmail">Email</label><input type="email" id="newEmail" placeholder="nombre@witme.es"></div>
+        <div class="field"><label for="newName">Nombre</label><input type="text" id="newName" placeholder="Nombre"></div>
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>Secciones</label>
+        <div class="section-checks" id="newSections">
+          <label><input type="checkbox" value="facturacion"> Facturación</label>
+          <label><input type="checkbox" value="objetivos"> Objetivos</label>
+          <label><input type="checkbox" value="viajes"> Viajes</label>
+          <label><input type="checkbox" value="estado"> Estado</label>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;"><label><input type="checkbox" id="newIsAdmin"> Administrador (acceso a todo, incluida esta pantalla y Nóminas)</label></div>
+      <div class="form-actions">
+        <button class="btn-primary" id="inviteBtn" type="button">+ Invitar</button>
+        <span class="form-msg" id="inviteMsg"></span>
+      </div>
+    </div>
+
+    <div class="chart-title" style="margin-top:32px;">EQUIPO</div>
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th style="text-align:left;">Nombre</th>
+          <th style="text-align:left;">Email</th>
+          <th>Facturación</th>
+          <th>Objetivos</th>
+          <th>Viajes</th>
+          <th>Estado</th>
+          <th>Admin</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+
+    <div class="footnote">
+      <strong>Qué es esto:</strong> cada casilla da acceso a uno de los menús principales del panel (Facturación, Objetivos, Viajes, Estado) — se aplica de verdad a nivel de base de datos (no es solo ocultar el menú), así que alguien sin una casilla marcada no puede ver esos datos aunque escriba la URL directamente. "Administrador" da acceso a todo, incluida esta pantalla y la gestión de usuarios.
+      <br><br>
+      <strong>Nóminas no aparece aquí a propósito:</strong> sigue restringida solo a las cuentas de Lukas, fijo en la base de datos, independientemente de lo que se marque en esta pantalla — son datos demasiado sensibles para dejarlos como una casilla más.
+      <br><br>
+      Invitar a alguien nuevo le manda un enlace de acceso a su email (igual que el que recibe cualquiera al iniciar sesión) — hace falta porque el panel solo deja entrar a cuentas ya dadas de alta.
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="assets/config.js"></script>
+<script type="module" src="assets/pageNav.js"></script>
+<script type="module" src="assets/usuarios.js"></script>
+</body>
+</html>

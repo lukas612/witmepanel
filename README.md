@@ -482,25 +482,53 @@ vivo a las Google Sheets en vez de datos fijos, usar tipos de cambio reales
 por fecha de cobro, y añadir agosto-septiembre 2026 de Panamá cuando España
 tenga también datos reales de esos meses.
 
-## Acceso (Supabase Auth)
+## Acceso (Supabase Auth) y permisos por sección
 
-El panel exige iniciar sesión con enlace mágico (email OTP). Solo pueden
-entrar las cuentas que:
+El panel exige iniciar sesión con enlace mágico (email OTP), y usa
+`shouldCreateUser: false`: nadie puede auto-registrarse, solo entra quien
+ya existe en `auth.users` **y** tiene una fila en `witme_users`.
 
-1. Existen en `auth.users` del proyecto Supabase, **y**
-2. Tienen su email en la lista de la política RLS de `witme_pnl_monthly` /
-   `witme_year_config` / `witme_fx_rates` (ver la migración de esquema).
+Desde `usuarios.html` ("Usuarios y permisos" en el menú Admin), Lukas
+controla, persona a persona, cuál de los 4 menús principales puede ver
+cada una: **Facturación**, **Objetivos**, **Viajes**, **Estado**. Esto no
+es solo ocultar el enlace del menú (`assets/pageNav.js` lo hace, pero
+además):
 
-El formulario de login usa `shouldCreateUser: false`, así que nadie puede
-auto-registrarse: solo entra quien ya ha sido invitado.
+- `witme_users(email, display_name, is_admin)` — quién existe en el
+  panel. `is_admin` salta todas las comprobaciones de sección (y es quien
+  puede entrar a `usuarios.html` y a Nóminas).
+- `witme_section_access(email, section_key)` — qué secciones tiene
+  concedidas cada email que no es admin.
+- `witme_has_access(sec)` / `witme_is_registered()` — funciones SQL que
+  **todas** las políticas RLS de las tablas de cada sección usan en vez
+  del antiguo array de emails fijo; así que alguien sin una sección
+  concedida no ve esos datos aunque entre por la URL directamente, igual
+  de real que cualquier otra RLS del panel. Las tablas de referencia
+  compartidas (`witme_fx_rates`, `witme_holded_fx_rates`,
+  `witme_year_config`) solo requieren estar registrado, sin sección
+  concreta.
+- `index.html` (Inicio) no tiene su propia sección: se adapta sola —
+  cada tarjeta del resumen (clientes con aviso, impagados, cumplimiento
+  de objetivo, Panamá) y el gráfico principal solo se cargan/muestran si
+  el usuario tiene la sección de la que dependen (Facturación la mayoría,
+  Objetivos la de cumplimiento); si no tiene ninguna, Inicio queda casi
+  vacío en vez de romperse.
+- **Nóminas queda fuera de este sistema a propósito**: sigue con su RLS
+  fija a las dos cuentas de Lukas (no aparece como casilla en
+  `usuarios.html`), por ser datos demasiado sensibles para dejarlos como
+  un permiso más que alguien pudiera conceder por error.
 
-### Añadir un usuario
+### Invitar a alguien nuevo
 
-1. Crear su fila en `auth.users` (magic-link, sin contraseña) — vía el
-   dashboard de Supabase (Authentication → Users → Invite) o insertando
-   directamente en `auth.users` + `auth.identities`.
-2. Añadir su email a los tres `in (...)` de las políticas RLS (nueva
-   migración, o editar y reaplicar la existente).
+Crear la cuenta en `auth.users` necesita la service-role key, que el
+navegador nunca tiene — por eso `usuarios.html` llama a la Edge Function
+`admin-invite-user` (solo responde a las dos cuentas de Lukas, verificado
+por su propio JWT) para invitar el email; el resto (fila en `witme_users`
++ `witme_section_access`) lo escribe la propia pantalla, ya que la RLS
+de esas dos tablas ya deja escribir a Lukas directamente. "Revocar
+acceso" en esa misma pantalla borra la fila de `witme_users` (con
+cascada a sus permisos) pero no la cuenta de `auth.users` — deja de
+poder ver nada del panel sin borrar su login.
 
 ## Desarrollo local
 

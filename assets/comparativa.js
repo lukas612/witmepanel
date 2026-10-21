@@ -1,4 +1,5 @@
 import { supabase, initAuth } from "./auth.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep"];
 const MARKET_ORDER = ["España", "Portugal", "Italia", "Rumania", "Polonia", "Alemania", "México", "Colombia", "Brasil", "Affiliate", "Otros"];
@@ -304,6 +305,12 @@ async function renderAll() {
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
+  const access = await getMyAccess();
+  if (!hasSection(access, "objetivos")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   try {
     const [{ data: targets, error: tErr }, { data: results, error: rErr }] = await Promise.all([
       supabase.from("witme_targets_monthly").select("*"),

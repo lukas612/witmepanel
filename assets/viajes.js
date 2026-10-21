@@ -1,5 +1,6 @@
 import { supabase, initAuth } from "./auth.js";
 import { fetchAllRows } from "./supabaseUtil.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 import { MIN_PRIOR_ACTIVITY } from "./clientData.js";
 import { SUPABASE_URL } from "./config.js";
 
@@ -564,6 +565,12 @@ async function renderAll() {
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
+  const access = await getMyAccess();
+  if (!hasSection(access, "viajes")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   try {
     await fetchAll();
     renderList();

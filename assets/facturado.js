@@ -1,4 +1,5 @@
 import { supabase, initAuth } from "./auth.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
@@ -143,6 +144,12 @@ async function renderAll() {
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
+  const access = await getMyAccess();
+  if (!hasSection(access, "facturacion")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   try {
     await fetchAll();
     const years = [...new Set([...invoicedRows, ...purchasedRows].map(r => r.year))].sort();

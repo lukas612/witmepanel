@@ -1,5 +1,6 @@
 import { supabase, initAuth } from "./auth.js";
 import { SUPABASE_URL } from "./config.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const money = (n) => n == null ? "—" : Number(n).toLocaleString("es-ES", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -17,6 +18,12 @@ function extractCookie(raw) {
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
   loadNote.style.display = "block";
+  const access = await getMyAccess();
+  if (!hasSection(access, "facturacion")) {
+    loadNote.textContent = "No tienes acceso a esta sección del panel — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "var(--neg)";
+    return;
+  }
   const { data, error } = await supabase.from("witme_panama_invoiced_monthly").select("*").order("year").order("month");
   loadNote.style.display = "none";
   if (error) { console.error(error); return; }

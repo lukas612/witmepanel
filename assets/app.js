@@ -1,6 +1,7 @@
 import { supabase, initAuth } from "./auth.js";
 import { fetchAllRows } from "./supabaseUtil.js";
 import { fetchClientData, buildIndex, computeReviewableMonths, computeAlerts } from "./clientData.js";
+import { getMyAccess, hasSection } from "./permissions.js";
 
 const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const MONTHS_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -26,13 +27,15 @@ initAuth(renderAll);
 
 // ---------------- Estado operativo (cross-page alerts) ----------------
 
-async function loadOpsAlerts() {
+async function loadOpsAlerts(access) {
   if (opsAlertsCache) return opsAlertsCache;
+  const hasFact = hasSection(access, "facturacion");
+  const hasObj = hasSection(access, "objetivos");
   const [clientAlerts, overdue, cumplimiento, panama] = await Promise.all([
-    loadClientAlerts().catch(() => null),
-    loadOverdue().catch(() => null),
-    loadCumplimiento().catch(() => null),
-    loadPanamaInvoiced().catch(() => null),
+    hasFact ? loadClientAlerts().catch(() => null) : null,
+    hasFact ? loadOverdue().catch(() => null) : null,
+    hasObj ? loadCumplimiento().catch(() => null) : null,
+    hasFact ? loadPanamaInvoiced().catch(() => null) : null,
   ]);
   opsAlertsCache = { clientAlerts, overdue, cumplimiento, panama };
   return opsAlertsCache;
@@ -94,44 +97,58 @@ async function loadCumplimiento() {
   };
 }
 
-function renderOpsAlerts({ clientAlerts, overdue, cumplimiento, panama }) {
+function renderOpsAlerts({ clientAlerts, overdue, cumplimiento, panama }, access) {
   const el = document.getElementById("opsAlerts");
   if (!el) return;
 
-  const clientCard = clientAlerts
-    ? `<a class="ops-card ${clientAlerts.total ? "neg" : "pos"}" href="matriz.html">
-        <div class="ops-label">CLIENTES CON AVISO</div>
-        <div class="ops-value">${clientAlerts.total}</div>
-        <div class="ops-foot">${clientAlerts.unreviewedMissing} dejaron de facturar · ${clientAlerts.unreviewedDeviation} atípicos, sin revisar — ${MONTHS_FULL[clientAlerts.month - 1]}</div>
-      </a>`
-    : `<div class="ops-card"><div class="ops-label">CLIENTES CON AVISO</div><div class="ops-value">—</div><div class="ops-foot">datos insuficientes todavía</div></div>`;
+  const hasFact = hasSection(access, "facturacion");
+  const hasObj = hasSection(access, "objetivos");
+  const cards = [];
 
-  const overdueCard = overdue
-    ? `<a class="ops-card ${overdue.count30 ? "neg" : "pos"}" href="impagados.html">
-        <div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div>
-        <div class="ops-value">${overdue.count30}</div>
-        <div class="ops-foot">${eur(overdue.overdueEur)} de ${eur(overdue.totalEur)} pendiente total</div>
-      </a>`
-    : `<div class="ops-card"><div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`;
+  // Cards for a section the user lacks are left out entirely, not shown as
+  // an empty placeholder -- "sin datos" would wrongly read as a data
+  // problem rather than a permission one.
+  if (hasFact) {
+    cards.push(clientAlerts
+      ? `<a class="ops-card ${clientAlerts.total ? "neg" : "pos"}" href="matriz.html">
+          <div class="ops-label">CLIENTES CON AVISO</div>
+          <div class="ops-value">${clientAlerts.total}</div>
+          <div class="ops-foot">${clientAlerts.unreviewedMissing} dejaron de facturar · ${clientAlerts.unreviewedDeviation} atípicos, sin revisar — ${MONTHS_FULL[clientAlerts.month - 1]}</div>
+        </a>`
+      : `<div class="ops-card"><div class="ops-label">CLIENTES CON AVISO</div><div class="ops-value">—</div><div class="ops-foot">datos insuficientes todavía</div></div>`);
 
-  const cumplBad = cumplimiento && ((cumplimiento.pctRevenue != null && cumplimiento.pctRevenue < 100) || (cumplimiento.pctProfit != null && cumplimiento.pctProfit < 100));
-  const cumplCard = cumplimiento
-    ? `<a class="ops-card ${cumplBad ? "neg" : "pos"}" href="comparativa.html">
-        <div class="ops-label">CUMPLIMIENTO OBJETIVO — ${MONTHS_FULL[cumplimiento.month - 1].toUpperCase()}</div>
-        <div class="ops-value">${pct0(cumplimiento.pctRevenue)} ing. · ${pct0(cumplimiento.pctProfit)} benef.</div>
-        <div class="ops-foot">real (operativo) vs objetivo del mes</div>
-      </a>`
-    : `<div class="ops-card"><div class="ops-label">CUMPLIMIENTO OBJETIVO</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`;
+    cards.push(overdue
+      ? `<a class="ops-card ${overdue.count30 ? "neg" : "pos"}" href="impagados.html">
+          <div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div>
+          <div class="ops-value">${overdue.count30}</div>
+          <div class="ops-foot">${eur(overdue.overdueEur)} de ${eur(overdue.totalEur)} pendiente total</div>
+        </a>`
+      : `<div class="ops-card"><div class="ops-label">FACTURAS VENCIDAS +30 DÍAS</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`);
+  }
 
-  const panamaCard = panama
-    ? `<a class="ops-card" href="panama.html">
-        <div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div>
-        <div class="ops-value">${usd(panama.total)}</div>
-        <div class="ops-foot">actualizado ${daysAgo(panama.lastPulled)} — sin tax/ITBMS</div>
-      </a>`
-    : `<div class="ops-card"><div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div><div class="ops-value">—</div><div class="ops-foot">sin datos todavía</div></div>`;
+  if (hasObj) {
+    const cumplBad = cumplimiento && ((cumplimiento.pctRevenue != null && cumplimiento.pctRevenue < 100) || (cumplimiento.pctProfit != null && cumplimiento.pctProfit < 100));
+    cards.push(cumplimiento
+      ? `<a class="ops-card ${cumplBad ? "neg" : "pos"}" href="comparativa.html">
+          <div class="ops-label">CUMPLIMIENTO OBJETIVO — ${MONTHS_FULL[cumplimiento.month - 1].toUpperCase()}</div>
+          <div class="ops-value">${pct0(cumplimiento.pctRevenue)} ing. · ${pct0(cumplimiento.pctProfit)} benef.</div>
+          <div class="ops-foot">real (operativo) vs objetivo del mes</div>
+        </a>`
+      : `<div class="ops-card"><div class="ops-label">CUMPLIMIENTO OBJETIVO</div><div class="ops-value">—</div><div class="ops-foot">sin datos</div></div>`);
+  }
 
-  el.innerHTML = clientCard + overdueCard + cumplCard + panamaCard;
+  if (hasFact) {
+    cards.push(panama
+      ? `<a class="ops-card" href="panama.html">
+          <div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div>
+          <div class="ops-value">${usd(panama.total)}</div>
+          <div class="ops-foot">actualizado ${daysAgo(panama.lastPulled)} — sin tax/ITBMS</div>
+        </a>`
+      : `<div class="ops-card"><div class="ops-label">FACTURADO PANAMÁ (EBI-PAC)</div><div class="ops-value">—</div><div class="ops-foot">sin datos todavía</div></div>`);
+  }
+
+  el.innerHTML = cards.join("");
+  el.style.display = cards.length ? "grid" : "none";
 }
 
 // ---------------- Data ----------------
@@ -475,6 +492,29 @@ function renderCumulative(yearData) {
 
 async function renderAll() {
   const loadNote = document.getElementById("loadNote");
+  const access = await getMyAccess();
+  const hasFact = hasSection(access, "facturacion");
+
+  // The main chart/KPIs are financial data (invoiced_monthly/pnl_monthly),
+  // same gate as Facturación -- if the user lacks it, hide that whole block
+  // instead of letting the fetch come back empty and render a broken chart.
+  document.getElementById("yearSeg").style.display = hasFact ? "" : "none";
+  document.getElementById("regionSeg").style.display = hasFact ? "" : "none";
+  document.getElementById("viewSeg").style.display = hasFact ? "" : "none";
+  document.querySelector(".chart-block").style.display = hasFact ? "" : "none";
+  document.querySelector(".ledger").style.display = hasFact ? "" : "none";
+
+  if (!hasFact) {
+    document.getElementById("kpiStrip").style.display = "none";
+    document.getElementById("kpiStrip2").style.display = "none";
+    document.getElementById("regionDisabledNote").style.display = "none";
+    loadNote.style.display = "block";
+    loadNote.textContent = "No tienes acceso a Facturación, así que no se muestra el resumen financiero — contacta a Lukas si crees que deberías tenerlo.";
+    loadNote.style.color = "";
+    loadOpsAlerts(access).then(a => renderOpsAlerts(a, access)).catch(err => console.error("ops alerts:", err));
+    return;
+  }
+
   loadNote.style.display = "block";
   loadNote.textContent = "Cargando datos…";
   loadNote.style.color = "";
@@ -503,7 +543,7 @@ async function renderAll() {
     loadNote.textContent = "No se pudieron cargar los datos. Puede que tu cuenta no tenga acceso a este panel — contacta al administrador.";
     loadNote.style.color = "var(--neg)";
   }
-  loadOpsAlerts().then(renderOpsAlerts).catch(err => console.error("ops alerts:", err));
+  loadOpsAlerts(access).then(a => renderOpsAlerts(a, access)).catch(err => console.error("ops alerts:", err));
 }
 
 document.getElementById("yearSeg").addEventListener("click", (e) => {
